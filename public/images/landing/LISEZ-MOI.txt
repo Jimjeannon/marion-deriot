@@ -1,0 +1,11 @@
+Déposez ici les 5 photos du slideshow de la landing page.
+Nommez-les exactement ainsi (en conservant l'ordre souhaité) :
+
+  01-cuisine-verte.jpg      → cuisine verte, îlot marbre, lustre rouge
+  02-cuisine-marbre.jpg     → cuisine blanche/bois, banquette, marbre blanc
+  03-cuisine-pierre.jpg     → cuisine grise, îlot pierre, tabourets
+  04-chambre-bleue.jpg      → chambre bleue, parquet chêne
+  05-chambre-naturelle.jpg  → chambre beige, tête de lit rotin, suspensions bois
+
+Format recommandé : JPG, 2400px de large minimum, qualité 85+.
+Pour la production, utilisez des AVIF/WebP via le pipeline Sanity.

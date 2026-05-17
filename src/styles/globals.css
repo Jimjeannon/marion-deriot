@@ -1,0 +1,180 @@
+/* ─── Google Fonts — DOIT être en premier (règle CSS : @import avant tout) ─ */
+/* En production : self-host les polices pour LCP < 2s                       */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
+
+/* ─── Imports Tailwind ─────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Variables CSS globales ────────────────────────────────────────────── */
+:root {
+  /* Couleurs */
+  --color-bg: theme('colors.ivory.DEFAULT');
+  --color-bg-subtle: theme('colors.ivory.50');
+  --color-text: theme('colors.anthracite.300');
+  --color-text-muted: theme('colors.greige.400');
+  --color-text-subtle: theme('colors.greige.300');
+  --color-accent: theme('colors.accent.DEFAULT');
+  --color-accent-light: theme('colors.accent.light');
+  --color-border: theme('colors.greige.100');
+  --color-sidebar-bg: theme('colors.ivory.50');
+
+  /* Sidebar */
+  --sidebar-width: theme('spacing.sidebar');
+
+  /* Transitions */
+  --ease-reveal: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-default: 400ms;
+  --duration-slow: 600ms;
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────────── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Respect prefers-reduced-motion — OBLIGATOIRE sur toutes les animations */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: theme('fontFamily.sans');
+    font-size: theme('fontSize.base[0]');
+    line-height: theme('fontSize.base[1].lineHeight');
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Typographie de base */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: theme('fontFamily.serif');
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /* Focus visible — accessible et élégant */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* Images — jamais de crop ni de stretch */
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+}
+
+/* ─── Composants réutilisables ──────────────────────────────────────────── */
+@layer components {
+  /* Skip link — accessibilité clavier */
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50;
+    @apply bg-anthracite-300 text-ivory px-4 py-2 text-sm font-sans;
+    @apply rounded focus:outline-none focus:ring-2 focus:ring-accent;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    @apply fixed left-0 top-0 h-full;
+    width: var(--sidebar-width);
+    background-color: var(--color-sidebar-bg);
+    border-right: 1px solid var(--color-border);
+  }
+
+  /* Contenu principal (décalé de la largeur sidebar) */
+  .main-content {
+    @apply min-h-screen;
+    margin-left: var(--sidebar-width);
+  }
+
+  @media (max-width: theme('screens.lg')) {
+    .main-content {
+      margin-left: 0;
+    }
+  }
+
+  /* Nav items sidebar */
+  .nav-item {
+    @apply block py-1 text-sm font-sans tracking-wide transition-colors;
+    color: var(--color-text-muted);
+    transition-duration: var(--duration-default);
+    transition-timing-function: var(--ease-smooth);
+  }
+
+  .nav-item:hover,
+  .nav-item[aria-current='page'] {
+    color: var(--color-text);
+  }
+
+  .nav-item[aria-current='page'] {
+    @apply relative;
+  }
+
+  .nav-item[aria-current='page']::after {
+    content: '';
+    @apply absolute bottom-0 left-0 h-px w-full;
+    background-color: var(--color-accent);
+  }
+}
+
+/* ─── Utilitaires custom ─────────────────────────────────────────────────── */
+@layer utilities {
+  /* Texte visible uniquement pour les lecteurs d'écran */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .not-sr-only {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* Grille asymétrique pour les mosaïques de projets */
+  .mosaic-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 2px;
+  }
+
+  .mosaic-grid > *:first-child {
+    grid-row: span 2;
+  }
+}

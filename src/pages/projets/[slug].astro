@@ -1,0 +1,60 @@
+---
+/**
+ * Page projet individuel FR — /projets/[slug]
+ *
+ * Layout v1 (volonté cliente) :
+ *  - Titre en haut
+ *  - 2 images de preview affichées côte à côte
+ *  - Clic sur une image → diaporama immersif sur l'intégralité de la galerie
+ *
+ * Aucune description ni métadonnée affichée à ce stade.
+ */
+import MainLayout from '@/layouts/MainLayout.astro';
+import ProjectGallery from '@/components/sections/ProjectGallery.astro';
+import { getAllProjects, getLocalized } from '@/lib/projects';
+
+export async function getStaticPaths() {
+  const projects = await getAllProjects();
+  return projects.map((project) => ({
+    params: { slug: project.slug.fr.current },
+    props: { project },
+  }));
+}
+
+interface Props {
+  project: import('@/lib/projects').SiteProject;
+}
+
+const { project } = Astro.props;
+const pageTitle = project.seo?.title?.fr ?? `${project.title.fr} — Marion Dériot`;
+const pageDescription = project.seo?.description?.fr ?? getLocalized(project.description, 'fr');
+---
+
+<MainLayout
+  title={pageTitle}
+  description={pageDescription}
+  lang="fr"
+  activeNav="projects"
+>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    'name': project.title.fr,
+    'description': getLocalized(project.description, 'fr'),
+    'creator': { '@type': 'Person', 'name': 'Marion Dériot' },
+    'dateCreated': project.year?.toString(),
+    'genre': project.category,
+  })} />
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      { '@type': 'ListItem', 'position': 1, 'name': 'Accueil', 'item': 'https://marionderiot.com/home' },
+      { '@type': 'ListItem', 'position': 2, 'name': 'Projets', 'item': 'https://marionderiot.com/projets' },
+      { '@type': 'ListItem', 'position': 3, 'name': project.title.fr, 'item': `https://marionderiot.com/projets/${project.slug.fr.current}` },
+    ],
+  })} />
+
+  <ProjectGallery project={project} lang="fr" />
+</MainLayout>

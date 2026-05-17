@@ -1,0 +1,42 @@
+---
+/**
+ * Landing page EN — /en/
+ * Mirror de la landing FR.
+ */
+import LandingLayout from '@/layouts/LandingLayout.astro';
+import { getDict } from '@/i18n';
+
+const t = getDict('en');
+---
+
+<LandingLayout
+  title={t.home.title}
+  description={t.home.metaDescription}
+  lang="en"
+>
+  <div class="fixed inset-0 bg-anthracite-400 z-0" id="landing-slideshow" aria-hidden="true">
+    <div class="absolute inset-0 bg-anthracite-300 opacity-90"></div>
+  </div>
+
+  <div class="relative z-10 flex flex-col items-center justify-center min-h-screen text-center px-6">
+    <div class="mb-12" id="landing-identity">
+      <h1 class="font-serif text-5xl sm:text-6xl font-light text-ivory tracking-wide mb-3">
+        Marion Dériot
+      </h1>
+      <p class="font-sans text-xs tracking-[0.3em] uppercase text-greige-200">
+        {t.landing.tagline}
+      </p>
+    </div>
+
+    <a
+      href="/en/home"
+      id="landing-enter"
+      class="group relative inline-flex items-center gap-3 font-sans text-xs tracking-[0.25em] uppercase text-ivory/70 hover:text-ivory transition-colors duration-600"
+      aria-label={t.landing.enterLabel}
+    >
+      <span class="block h-px w-8 bg-current" aria-hidden="true"></span>
+      {t.landing.enter}
+      <span class="block h-px w-8 bg-current" aria-hidden="true"></span>
+    </a>
+  </div>
+</LandingLayout>

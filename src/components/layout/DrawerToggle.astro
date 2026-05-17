@@ -1,0 +1,152 @@
+---
+/**
+ * DrawerToggle — Bouton hamburger visible uniquement sur mobile/tablette.
+ * Déclenche l'ouverture du drawer de navigation.
+ */
+import { getDict, getLangUrl, getProjectUrl } from '@/i18n';
+import type { Locale } from '@/i18n';
+import { getAllProjects, getLocalized, getProjectSlug } from '@/lib/projects';
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang);
+const projects = await getAllProjects();
+const altLang: Locale = lang === 'fr' ? 'en' : 'fr';
+---
+
+<div class="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-ivory border-b border-greige-100">
+  <!-- Logo compact mobile -->
+  <a href={lang === 'fr' ? '/home' : '/en/home'} class="font-serif text-base font-light text-anthracite-300">
+    Marion Dériot
+  </a>
+
+  <!-- Bouton hamburger -->
+  <button
+    type="button"
+    id="drawer-toggle"
+    class="flex flex-col gap-1.5 p-2 text-anthracite-300 hover:text-anthracite-500 transition-colors focus-visible:outline-accent"
+    aria-label={t.nav.openMenu}
+    aria-expanded="false"
+    aria-controls="mobile-drawer"
+  >
+    <span class="block w-5 h-px bg-current transition-transform duration-400" id="ham-1"></span>
+    <span class="block w-5 h-px bg-current transition-opacity duration-400" id="ham-2"></span>
+    <span class="block w-5 h-px bg-current transition-transform duration-400" id="ham-3"></span>
+  </button>
+</div>
+
+<!-- Drawer overlay mobile -->
+<div
+  id="mobile-drawer"
+  class="lg:hidden fixed inset-0 z-40 hidden"
+  aria-hidden="true"
+>
+  <!-- Fond semi-transparent -->
+  <div id="drawer-backdrop" class="absolute inset-0 bg-anthracite-300/40 backdrop-blur-sm"></div>
+
+  <!-- Panel latéral -->
+  <nav
+    class="absolute left-0 top-0 h-full w-72 bg-ivory-50 shadow-xl flex flex-col justify-between py-10 px-8"
+    aria-label="Menu mobile"
+  >
+    <div>
+      <a href={lang === 'fr' ? '/home' : '/en/home'} class="block mb-10">
+        <span class="block font-serif text-lg font-light text-anthracite-300">Marion Dériot</span>
+        <span class="block font-sans text-xs tracking-[0.2em] uppercase text-greige-400 mt-0.5">
+          Architecte d'intérieur
+        </span>
+      </a>
+      <ul class="space-y-4" role="list">
+        <li>
+          <a href={getLangUrl(lang, '/home')} class="nav-item text-base">
+            {t.nav.home}
+          </a>
+        </li>
+        <li>
+          <a href={getLangUrl(lang, '/projets')} class="nav-item text-base">
+            {t.nav.projects}
+          </a>
+          <ul class="mt-2 pl-3 space-y-1 border-l border-greige-100" role="list">
+            {projects.map((project) => {
+              const slug = getProjectSlug(project, lang);
+              const title = getLocalized(project.title, lang);
+              return (
+                <li>
+                  <a
+                    href={getProjectUrl(lang, slug)}
+                    class="block text-xs font-sans text-greige-400 hover:text-anthracite-300 uppercase tracking-wide"
+                  >
+                    {title}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </li>
+        <li>
+          <a href={getLangUrl(lang, '/info')} class="nav-item text-base">
+            {t.nav.info}
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div>
+      <a
+        href={getLangUrl(altLang, '/home')}
+        class="text-xs font-sans tracking-[0.15em] uppercase text-greige-400"
+        lang={lang === 'fr' ? 'en' : 'fr'}
+      >
+        {t.nav.switchLang}
+      </a>
+    </div>
+  </nav>
+</div>
+
+<script>
+  const toggle = document.getElementById('drawer-toggle');
+  const drawer = document.getElementById('mobile-drawer');
+  const backdrop = document.getElementById('drawer-backdrop');
+  const ham1 = document.getElementById('ham-1');
+  const ham2 = document.getElementById('ham-2');
+  const ham3 = document.getElementById('ham-3');
+
+  if (!toggle || !drawer || !backdrop) throw new Error('Drawer elements missing');
+
+  let isOpen = false;
+
+  function openDrawer() {
+    isOpen = true;
+    drawer!.classList.remove('hidden');
+    drawer!.setAttribute('aria-hidden', 'false');
+    toggle!.setAttribute('aria-expanded', 'true');
+    toggle!.setAttribute('aria-label', 'Fermer le menu');
+    document.body.style.overflow = 'hidden';
+    // Animation hamburger → croix
+    ham1?.classList.add('translate-y-2', 'rotate-45');
+    ham2?.classList.add('opacity-0');
+    ham3?.classList.add('-translate-y-2', '-rotate-45');
+  }
+
+  function closeDrawer() {
+    isOpen = false;
+    drawer!.classList.add('hidden');
+    drawer!.setAttribute('aria-hidden', 'true');
+    toggle!.setAttribute('aria-expanded', 'false');
+    toggle!.setAttribute('aria-label', 'Ouvrir le menu');
+    document.body.style.overflow = '';
+    ham1?.classList.remove('translate-y-2', 'rotate-45');
+    ham2?.classList.remove('opacity-0');
+    ham3?.classList.remove('-translate-y-2', '-rotate-45');
+  }
+
+  toggle.addEventListener('click', () => (isOpen ? closeDrawer() : openDrawer()));
+  backdrop.addEventListener('click', closeDrawer);
+
+  // Fermeture clavier Esc
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen) closeDrawer();
+  });
+</script>

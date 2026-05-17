@@ -1,0 +1,153 @@
+---
+/**
+ * ProjectsDropdown — Dropdown inline dans la sidebar listant les projets.
+ * Ouvert par défaut dans la section Projets (liste + fiches).
+ */
+import { getDict, getLangUrl, getProjectUrl } from '@/i18n';
+import type { Locale } from '@/i18n';
+import { getAllProjects, getLocalized, getProjectSlug } from '@/lib/projects';
+
+interface Props {
+  lang: Locale;
+  isActive?: boolean;
+  /** Slug du projet courant pour l'indicateur actif dans la liste */
+  currentSlug?: string;
+}
+
+const { lang, isActive = false, currentSlug } = Astro.props;
+const t = getDict(lang);
+const projects = await getAllProjects();
+const initiallyOpen = isActive;
+---
+
+<div
+  class="relative"
+  data-projects-dropdown
+  data-initially-open={initiallyOpen ? 'true' : 'false'}
+>
+  <button
+    type="button"
+    data-projects-toggle
+    class="nav-item w-full flex items-center justify-between"
+    aria-expanded={initiallyOpen ? 'true' : 'false'}
+    aria-controls="projects-list"
+    aria-current={isActive ? 'page' : undefined}
+  >
+    <span>{t.nav.projects}</span>
+    <svg
+      data-projects-chevron
+      class:list={[
+        'w-3 h-3 text-greige-400 transition-transform duration-400 ease-smooth',
+        initiallyOpen && 'rotate-180',
+      ]}
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+
+  <ul
+    id="projects-list"
+    data-projects-list
+    class:list={[
+      'mt-1 pl-3 space-y-1',
+      !initiallyOpen && 'hidden',
+    ]}
+    role="list"
+    aria-label={lang === 'fr' ? 'Projets' : 'Projects'}
+  >
+    <li>
+      <a
+        href={getLangUrl(lang, '/projets')}
+        class:list={[
+          'block py-0.5 text-xs font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide',
+          !currentSlug && isActive && 'text-anthracite-300',
+        ]}
+        aria-current={!currentSlug && isActive ? 'page' : undefined}
+      >
+        {t.projects.allProjects}
+      </a>
+    </li>
+
+    {projects.map((project) => {
+      const slug = getProjectSlug(project, lang);
+      const title = getLocalized(project.title, lang);
+      const isCurrent = currentSlug === slug;
+      return (
+        <li>
+          <a
+            href={getProjectUrl(lang, slug)}
+            class:list={[
+              'block py-0.5 text-xs font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide uppercase',
+              isCurrent && 'text-anthracite-300',
+            ]}
+            aria-current={isCurrent ? 'page' : undefined}
+          >
+            {title}
+          </a>
+        </li>
+      );
+    })}
+  </ul>
+</div>
+
+<script>
+  type DropdownController = { setOpen: (open: boolean) => void; isOpen: () => boolean };
+
+  const controllers = new WeakMap<Element, DropdownController>();
+  let docListenerBound = false;
+
+  function initProjectsDropdown() {
+    document.querySelectorAll('[data-projects-dropdown]').forEach((wrapper) => {
+      if (controllers.has(wrapper)) return;
+
+      const btn = wrapper.querySelector('[data-projects-toggle]') as HTMLButtonElement | null;
+      const list = wrapper.querySelector('[data-projects-list]') as HTMLElement | null;
+      const chevron = wrapper.querySelector('[data-projects-chevron]') as SVGElement | null;
+      if (!btn || !list) return;
+
+      const initiallyOpen = wrapper.getAttribute('data-initially-open') === 'true';
+      let isOpen = initiallyOpen;
+
+      const setOpen = (open: boolean) => {
+        isOpen = open;
+        btn.setAttribute('aria-expanded', String(open));
+        list.classList.toggle('hidden', !open);
+        chevron?.classList.toggle('rotate-180', open);
+      };
+
+      setOpen(initiallyOpen);
+      controllers.set(wrapper, { setOpen, isOpen: () => isOpen });
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setOpen(!isOpen);
+      });
+
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isOpen) {
+          setOpen(false);
+          btn.focus();
+        }
+      });
+    });
+
+    if (!docListenerBound) {
+      docListenerBound = true;
+      document.addEventListener('click', (e) => {
+        document.querySelectorAll('[data-projects-dropdown]').forEach((wrapper) => {
+          const ctrl = controllers.get(wrapper);
+          if (!ctrl?.isOpen()) return;
+          if (!wrapper.contains(e.target as Node)) {
+            ctrl.setOpen(false);
+          }
+        });
+      });
+    }
+  }
+
+  initProjectsDropdown();
+  document.addEventListener('astro:page-load', initProjectsDropdown);
+</script>

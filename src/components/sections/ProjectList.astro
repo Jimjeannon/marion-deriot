@@ -1,0 +1,48 @@
+---
+import { getDict, getProjectUrl } from '@/i18n';
+import type { Locale } from '@/i18n';
+import type { SiteProject } from '@/lib/projects';
+import { getLocalized, getProjectMetaLine, getProjectSlug } from '@/lib/projects';
+
+interface Props {
+  projects: SiteProject[];
+  lang: Locale;
+}
+
+const { projects, lang } = Astro.props;
+const t = getDict(lang);
+---
+
+<ul
+  class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-12"
+  role="list"
+  aria-label={t.projects.title}
+>
+  {projects.map((project) => {
+    const slug = getProjectSlug(project, lang);
+    const title = getLocalized(project.title, lang);
+    const description = getLocalized(project.description, lang);
+    const metaLine = getProjectMetaLine(project, lang);
+    return (
+      <li>
+        <a
+          href={getProjectUrl(lang, slug)}
+          class="group block"
+          aria-label={`${t.projects.viewProject} : ${title}`}
+        >
+          <p class="font-sans text-xs tracking-[0.2em] text-anthracite-300 uppercase group-hover:text-anthracite-500 transition-colors duration-400 mb-2">
+            {title}
+          </p>
+          {metaLine && (
+            <p class="font-sans text-xs text-greige-400 mb-3 tracking-wide">
+              {metaLine}
+            </p>
+          )}
+          <p class="font-serif text-base font-light text-greige-500 leading-relaxed line-clamp-3">
+            {description}
+          </p>
+        </a>
+      </li>
+    );
+  })}
+</ul>

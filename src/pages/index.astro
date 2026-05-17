@@ -1,0 +1,550 @@
+---
+/**
+ * Landing page FR — /
+ *
+ * Design : slideshow plein écran, immersif. Le titre est posé en haut à
+ * gauche pour libérer l'image, les contrôles (dots + Entrer) en bas centré.
+ *
+ * Principes :
+ *  — Première image visible IMMÉDIATEMENT : rendue avec slide--on en SSR,
+ *    préchargée via <link rel="preload"> dans le <head>. Aucun fondu d'entrée,
+ *    aucun écran noir au chargement. Fond de page : ivoire (jamais noir).
+ *  — Crossfade ultra-fluide entre les images : l'ancienne reste devant pendant
+ *    qu'elle s'efface, la nouvelle est déjà pleinement opaque dessous. Pas de
+ *    fond visible entre les deux à aucun instant.
+ *  — Ken Burns adouci (scale 1 → 1.04, 18s) : mouvement à peine perceptible,
+ *    pour éviter tout effet de « saut d'échelle » entre image sortante (1.04)
+ *    et image entrante (1.00).
+ *  — Cadrage cohérent : background-position center center sur toutes les
+ *    images. Les formats paysage et portrait sont couverts sans crop visible.
+ *  — Lisibilité du titre : gradient localisé top-left uniquement (le reste de
+ *    l'image n'est pas voilée).
+ *  — prefers-reduced-motion : Ken Burns, crossfade et reveals désactivés.
+ */
+import LandingLayout from '@/layouts/LandingLayout.astro';
+import { getDict } from '@/i18n';
+
+const t = getDict('fr');
+
+/**
+ * Slides du slideshow.
+ * Les sources pointent directement sur les fichiers présents dans
+ * public/images/landing/. Attention à l'extension exacte de chaque fichier
+ * (mélange .jpg / .jpeg : un seul typo et l'image ne charge plus).
+ */
+const slides = [
+  {
+    src: '/images/landing/01-cuisine-verte.jpg',
+    alt: 'Cuisine sur mesure — meubles vert sauge, îlot en marbre, lustre sculptural rouge',
+  },
+  {
+    src: '/images/landing/02-cuisine-marbre.jpeg',
+    alt: 'Cuisine ouverte — caissons bois clair, îlot marbre blanc, banquette intégrée',
+  },
+  {
+    src: '/images/landing/03-cuisine-pierre.jpg',
+    alt: 'Cuisine contemporaine — façades bois filé, plan de travail pierre grise',
+  },
+  {
+    src: '/images/landing/04-chambre-bleue.jpg',
+    alt: 'Chambre — tête de lit capitonnée, mur bleu profond, menuiserie sur mesure',
+  },
+  {
+    src: '/images/landing/05-chambre-naturelle.jpg',
+    alt: 'Chambre — tête de lit cannage, suspensions bois tourné, ambiance naturelle',
+  },
+];
+---
+
+<LandingLayout
+  title={t.home.title}
+  description={t.home.metaDescription}
+  lang="fr"
+>
+  <!-- Préchargement de la première image : visible dès le premier paint -->
+  <Fragment slot="head">
+    <link
+      rel="preload"
+      as="image"
+      href={slides[0].src}
+      fetchpriority="high"
+    />
+    <script is:inline define:vars={{ firstSlideSrc: slides[0].src }}>
+      (function revealLanding(src) {
+        function ready() {
+          document.documentElement.classList.remove('landing-pending');
+          document.documentElement.classList.add('landing-ready');
+        }
+        const img = new Image();
+        img.onload = ready;
+        img.onerror = ready;
+        img.src = src;
+        if (img.complete) ready();
+        setTimeout(ready, 5000);
+      })(firstSlideSrc);
+    </script>
+  </Fragment>
+
+  <!-- ─── Slideshow plein écran ──────────────────────────────────────────── -->
+  <div class="landing-root" id="landing-root">
+
+    <!-- Couche 1 : slides en fond ------------------------------------------ -->
+    <div class="slides-container" id="slides-container" aria-hidden="true">
+      {slides.map((slide, i) => (
+        <div
+          class={`slide${i === 0 ? ' slide--on' : ''}`}
+          data-index={i}
+          style={`background-image: url('${slide.src}')`}
+          role="img"
+          aria-label={slide.alt}
+        />
+      ))}
+    </div>
+
+    <!-- Couche 2 : gradient localisé top-left (lisibilité du nom) --------- -->
+    <div class="landing-title-gradient landing-chrome" aria-hidden="true" />
+
+    <!-- Couche 3 : identité en haut à gauche ------------------------------ -->
+    <header class="landing-identity landing-chrome" id="landing-identity">
+      <h1 class="landing-name">Marion Dériot</h1>
+      <p class="landing-tagline">{t.landing.tagline}</p>
+    </header>
+
+    <!-- Couche 4 : contrôles en bas centré (dots + bouton Entrer) -------- -->
+    <div class="landing-controls landing-chrome" id="landing-controls">
+      <div class="slide-indicators" role="tablist" aria-label="Diaporama">
+        {slides.map((_, i) => (
+          <button
+            type="button"
+            role="tab"
+            class={`slide-dot${i === 0 ? ' slide-dot--active' : ''}`}
+            data-target={i}
+            aria-label={`Image ${i + 1}`}
+            aria-selected={i === 0 ? 'true' : 'false'}
+          />
+        ))}
+      </div>
+
+      <button
+        type="button"
+        id="landing-enter-btn"
+        class="landing-enter"
+        aria-label={t.landing.enterLabel}
+      >
+        <span class="enter-line" aria-hidden="true" />
+        <span class="enter-label">{t.landing.enter}</span>
+        <span class="enter-line" aria-hidden="true" />
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Voile ivoire pour la transition vers /home -->
+  <div class="enter-veil" id="enter-veil" aria-hidden="true"></div>
+</LandingLayout>
+
+<!-- ─── Styles ──────────────────────────────────────────────────────────── -->
+<!-- is:global : évite le scoping Astro sur les classes manipulées par JS    -->
+<style is:global>
+  /* ── Racine landing ────────────────────────────────────────────────────── */
+  .landing-root {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    /* Fond transparent : c'est l'ivoire du <body> qui transparaît avant que
+       la première image ne soit peinte. Plus jamais d'écran noir. */
+    background: transparent;
+  }
+
+  /* ── Slides ────────────────────────────────────────────────────────────── */
+  .slides-container {
+    position: absolute;
+    inset: 0;
+  }
+
+  /*
+   * Architecture crossfade — garantie zéro fond visible :
+   *
+   *  .slide        → base : opacity 0, z-index 0
+   *  .slide--on    → image active : opacity 1, z-index 1, Ken Burns en cours
+   *  (sortante)    → inline : z-index 2 (devant), opacity 1 → 0 en transition JS
+   *
+   * L'image sortante reste TOUJOURS au-dessus de la nouvelle pendant le fondu.
+   * La nouvelle est déjà à opacity 1 en dessous. À aucun moment le fond
+   * (ivoire du body) ne peut transparaître entre les deux couches.
+   *
+   * Première slide : .slide--on est posé en SSR, opacity 1 dès le premier
+   * paint. Aucun fondu d'entrée, aucun JS requis pour la rendre visible.
+   */
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center center; /* cadrage uniforme — pas de saut entre slides */
+    background-repeat: no-repeat;
+    transform-origin: center center;
+    opacity: 0;
+    z-index: 0;
+    will-change: transform, opacity;
+  }
+
+  /* Image active — Ken Burns adouci, pleinement visible, z-index 1 */
+  .slide--on {
+    opacity: 1;
+    z-index: 1;
+    animation: kenBurns 18s cubic-bezier(0.33, 0, 0.67, 1) forwards;
+  }
+
+  .slide--on.slide--kb-reverse {
+    animation-name: kenBurnsReverse;
+  }
+
+  /*
+   * Ken Burns à amplitude réduite (1.00 → 1.04 / translate 0.6%) :
+   * le saut perçu entre l'image sortante (~1.04) et l'entrante (1.00) est
+   * désormais imperceptible pendant le crossfade.
+   */
+  @keyframes kenBurns {
+    from { transform: scale(1.00) translate(0%,    0%);    }
+    to   { transform: scale(1.04) translate(-0.6%, -0.3%); }
+  }
+
+  @keyframes kenBurnsReverse {
+    from { transform: scale(1.00) translate(0%,    0%);   }
+    to   { transform: scale(1.04) translate( 0.6%, 0.3%); }
+  }
+
+  /* ── Gradient localisé top-left ───────────────────────────────────────── */
+  /* Subtil, juste pour garantir la lisibilité du nom sur images claires.   */
+  /* Le reste de l'image reste pur, sans voile global.                       */
+  .landing-title-gradient {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        135deg,
+        rgba(20, 19, 18, 0.55) 0%,
+        rgba(20, 19, 18, 0.25) 18%,
+        rgba(20, 19, 18, 0)    42%
+      );
+  }
+
+  /* ── Identité — top-left ──────────────────────────────────────────────── */
+  .landing-identity {
+    position: absolute;
+    top: clamp(1.75rem, 3.5vw, 3rem);
+    left: clamp(1.75rem, 3.5vw, 3rem);
+    z-index: 10;
+    text-align: left;
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity 900ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      transform 900ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .landing-name {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+    font-weight: 300;
+    color: #F5F3EF;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin: 0 0 0.5rem;
+  }
+
+  .landing-tagline {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(245, 243, 239, 0.7);
+    margin: 0;
+  }
+
+  /* ── Contrôles bas-centré (dots + bouton Entrer) ──────────────────────── */
+  .landing-controls {
+    position: absolute;
+    bottom: clamp(1.75rem, 3.5vw, 2.75rem);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  /* ── Bouton "Entrer" ──────────────────────────────────────────────────── */
+  .landing-enter {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    opacity: 1;
+    transition: opacity 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .landing-enter:hover .enter-label,
+  .landing-enter:focus-visible .enter-label {
+    color: #F5F3EF;
+    letter-spacing: 0.30em;
+  }
+
+  .landing-enter:hover .enter-line,
+  .landing-enter:focus-visible .enter-line {
+    width: 2.5rem;
+    background-color: #F5F3EF;
+  }
+
+  .enter-label {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: rgba(245, 243, 239, 0.75);
+    transition:
+      color 400ms ease,
+      letter-spacing 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .enter-line {
+    display: block;
+    height: 1px;
+    width: 1.75rem;
+    background-color: rgba(245, 243, 239, 0.5);
+    transition:
+      width 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      background-color 400ms ease;
+  }
+
+  .landing-enter:focus-visible { outline: none; }
+  .landing-enter:focus-visible .enter-label {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    color: #F5F3EF;
+  }
+
+  /* ── Indicateurs de slide ─────────────────────────────────────────────── */
+  .slide-indicators {
+    display: flex;
+    gap: 0.5rem;
+    opacity: 1;
+    transition: opacity 700ms ease;
+  }
+
+  .slide-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(245, 243, 239, 0.4);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: background 400ms ease, transform 300ms ease;
+  }
+
+  .slide-dot--active {
+    background: rgba(245, 243, 239, 0.95);
+    transform: scale(1.4);
+  }
+
+  .slide-dot:hover:not(.slide-dot--active) {
+    background: rgba(245, 243, 239, 0.7);
+  }
+
+  /* ── Voile ivoire — transition vers /home ─────────────────────────────── */
+  .enter-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: #F5F3EF;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 650ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .enter-veil.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* ── prefers-reduced-motion ───────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .slide--on,
+    .landing-identity,
+    .landing-enter,
+    .slide-indicators,
+    .slide-dot,
+    .enter-line,
+    .enter-label,
+    .enter-veil {
+      animation: none !important;
+      transition: none !important;
+      transform: none !important;
+    }
+
+    .slide      { opacity: 0 !important; }
+    .slide--on  { opacity: 1 !important; }
+    .landing-identity { transform: translate(0, 0) !important; }
+    .landing-controls { transform: translateX(-50%) !important; }
+  }
+</style>
+
+<!-- ─── Script slideshow + transition "entrée" ──────────────────────────── -->
+<script>
+  // ── Références DOM ────────────────────────────────────────────────────────
+  const slides     = Array.from(document.querySelectorAll<HTMLElement>('.slide'));
+  const dots       = Array.from(document.querySelectorAll<HTMLButtonElement>('.slide-dot'));
+  const enterBtn   = document.getElementById('landing-enter-btn')  as HTMLButtonElement;
+  const enterVeil  = document.getElementById('enter-veil')         as HTMLElement;
+  // ── Constantes timing ─────────────────────────────────────────────────────
+  // 5,5 s entre slides + 1,6 s de crossfade : très long fondu pour que la
+  // bascule soit imperceptible, jamais "coupée".
+  const INTERVAL   = 5500;
+  const FADE_MS    = 1600;
+  const KB_REVERSE = 'slide--kb-reverse';
+
+  let current = 0;
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ── Utilitaire : relance une animation CSS via reflow forcé ───────────────
+  function resetKB(el: HTMLElement) {
+    el.style.animation = 'none';
+    void el.offsetHeight;
+    el.style.removeProperty('animation');
+  }
+
+  /** Retire uniquement les styles posés par le JS — jamais cssText (effacerait background-image). */
+  function clearSlideRuntimeStyles(el: HTMLElement) {
+    el.style.removeProperty('z-index');
+    el.style.removeProperty('opacity');
+    el.style.removeProperty('transition');
+    el.style.removeProperty('transform');
+    el.style.removeProperty('animation');
+  }
+
+  function updateDots(index: number) {
+    dots.forEach((dot, i) => {
+      const active = i === index;
+      dot.classList.toggle('slide-dot--active', active);
+      dot.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+
+  // ── Changement de slide — crossfade garanti zéro fond visible ────────────
+  //
+  // Principe :
+  //   1. Nouvelle slide affichée en dessous (slide--on, z-index 1, KB lancé)
+  //   2. Ancienne slide restée au-dessus (inline z-index:2) avec opacity:1 figée
+  //   3. Reflow forcé → le navigateur valide opacity:1 comme état "avant"
+  //   4. Inline transition opacity 1→0 déclenchée : fondu parfait, jamais de
+  //      teinte de fond entre les deux couches.
+  function goTo(index: number) {
+    if (index === current) return;
+
+    const oldEl = slides[current];
+    const newEl = slides[index];
+
+    // Bascule instantanée si mouvement réduit (autoplay actif, sans fondu/KB)
+    if (prefersReduced) {
+      clearSlideRuntimeStyles(oldEl);
+      oldEl.classList.remove('slide--on', KB_REVERSE);
+      clearSlideRuntimeStyles(newEl);
+      newEl.classList.remove(KB_REVERSE);
+      newEl.classList.add('slide--on');
+      current = index;
+      updateDots(index);
+      return;
+    }
+
+    // Indicateurs
+    updateDots(index);
+    current = index;
+
+    // ── Étape 1 : nouvelle slide visible en dessous ───────────────────────
+    clearSlideRuntimeStyles(newEl);
+    newEl.classList.remove('slide--on', KB_REVERSE);
+    resetKB(newEl);
+    newEl.classList.toggle(KB_REVERSE, index % 2 === 1);
+    newEl.classList.add('slide--on');
+
+    // ── Étape 2 : ancienne slide — capturer sa position KB exacte ────────
+    const frozenT = window.getComputedStyle(oldEl).transform;
+    oldEl.classList.remove('slide--on');
+    if (frozenT && frozenT !== 'none') {
+      oldEl.style.transform = frozenT;
+    }
+    oldEl.style.zIndex     = '2';
+    oldEl.style.opacity    = '1';
+    oldEl.style.transition = '';
+
+    // ── Étape 3 : reflow ─────────────────────────────────────────────────
+    void oldEl.offsetHeight;
+
+    // ── Étape 4 : déclencher le fondu (long, courbe quasi-sinusoïdale) ───
+    oldEl.style.transition = `opacity ${FADE_MS}ms cubic-bezier(0.4, 0, 0.6, 1)`;
+    oldEl.style.opacity    = '0';
+
+    // ── Étape 5 : nettoyage après le fondu ────────────────────────────────
+    setTimeout(() => {
+      clearSlideRuntimeStyles(oldEl);
+      oldEl.classList.remove(KB_REVERSE);
+    }, FADE_MS + 150);
+  }
+
+  function goNext() {
+    goTo((current + 1) % slides.length);
+  }
+
+  // ── Autoplay (bascule instantanée si prefers-reduced-motion) ─────────────
+  if (slides.length > 1) {
+    timer = setInterval(goNext, INTERVAL);
+  }
+
+  // ── Navigation manuelle (dots) ────────────────────────────────────────────
+  dots.forEach((dot, i) => {
+    dot.addEventListener('click', () => {
+      if (i === current) return;
+      if (timer) { clearInterval(timer); timer = null; }
+      goTo(i);
+      timer = setInterval(goNext, INTERVAL);
+    });
+  });
+
+  // ── Nettoyage au départ (View Transitions) ─────────────────────────────────
+  document.addEventListener('astro:before-preparation', () => {
+    if (timer) clearInterval(timer);
+  });
+
+  // ── Transition "entrée" — fondu vers l'ivoire ─────────────────────────────
+  enterBtn?.addEventListener('click', () => {
+    if (prefersReduced) {
+      window.location.href = '/home';
+      return;
+    }
+
+    enterBtn.disabled = true;
+    if (timer) clearInterval(timer);
+
+    enterVeil?.classList.add('active');
+
+    setTimeout(() => {
+      window.location.href = '/home';
+    }, 580);
+  });
+
+  enterBtn?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      enterBtn.click();
+    }
+  });
+</script>

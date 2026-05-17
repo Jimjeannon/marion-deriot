@@ -1,0 +1,28 @@
+---
+/**
+ * Page 404 — Not Found
+ * Sobre, dans le style du site. Pas de sidebar (pas de layout complet).
+ */
+import MainLayout from '@/layouts/MainLayout.astro';
+---
+
+<MainLayout
+  title="Page introuvable — Marion Dériot"
+  description="La page que vous recherchez n'existe pas."
+  lang="fr"
+>
+  <div class="min-h-screen flex flex-col items-center justify-center px-10 text-center">
+    <p class="font-serif text-7xl font-light text-greige-200 mb-8" aria-hidden="true">
+      404
+    </p>
+    <h1 class="font-sans text-xs tracking-[0.25em] uppercase text-greige-400 mb-10">
+      Page introuvable
+    </h1>
+    <a
+      href="/home"
+      class="font-sans text-xs tracking-[0.2em] uppercase text-anthracite-300 border-b border-anthracite-300 pb-0.5 hover:text-accent hover:border-accent transition-colors duration-400"
+    >
+      Retour à l'accueil
+    </a>
+  </div>
+</MainLayout>

@@ -1,0 +1,23 @@
+---
+import MainLayout from '@/layouts/MainLayout.astro';
+import { getDict } from '@/i18n';
+
+const t = getDict('en');
+---
+
+<MainLayout
+  title={t.home.title}
+  description={t.home.metaDescription}
+  lang="en"
+  activeNav="home"
+>
+  <div class="min-h-screen px-10 py-16 lg:px-16">
+    <h1 class="sr-only">{t.home.title}</h1>
+    <div class="max-w-lg mt-8">
+      <p class="font-serif text-3xl font-light text-anthracite-300 leading-snug">
+        Interior architecture<br />
+        <em class="not-italic text-greige-400">and design</em>
+      </p>
+    </div>
+  </div>
+</MainLayout>

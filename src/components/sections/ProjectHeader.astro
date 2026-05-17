@@ -1,0 +1,29 @@
+---
+import type { SiteProject } from '@/lib/projects';
+import { getLocalized, getProjectMetaLine } from '@/lib/projects';
+import type { Locale } from '@/i18n';
+
+interface Props {
+  project: SiteProject;
+  lang: Locale;
+}
+
+const { project, lang } = Astro.props;
+const title = getLocalized(project.title, lang);
+const description = getLocalized(project.description, lang);
+const metaLine = getProjectMetaLine(project, lang);
+---
+
+<header class="mb-12 max-w-2xl">
+  <h1 class="font-sans text-xs tracking-[0.25em] uppercase text-anthracite-300 mb-4">
+    {title}
+  </h1>
+  {metaLine && (
+    <p class="font-sans text-sm text-greige-400 tracking-wide mb-6">
+      {metaLine}
+    </p>
+  )}
+  <p class="font-serif text-lg font-light text-anthracite-300 leading-relaxed">
+    {description}
+  </p>
+</header>

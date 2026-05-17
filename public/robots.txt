@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Admin Sanity Studio — exclu du référencement
+Disallow: /admin/
+Disallow: /admin
+
+Sitemap: https://marionderiot.com/sitemap.xml

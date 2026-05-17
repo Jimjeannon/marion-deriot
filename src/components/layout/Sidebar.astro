@@ -1,0 +1,169 @@
+---
+/**
+ * Sidebar — Navigation principale gauche fixe (desktop ≥ 1024px)
+ * Sur mobile/tablette, masquée et remplacée par le Drawer.
+ */
+import { getDict, getLangUrl } from '@/i18n';
+import type { Locale } from '@/i18n';
+import DrawerToggle from './DrawerToggle.astro';
+import ProjectsDropdown from './ProjectsDropdown.astro';
+
+interface Props {
+  lang: Locale;
+  activeNav?: 'home' | 'projects' | 'info';
+}
+
+const { lang, activeNav } = Astro.props;
+const t = getDict(lang);
+
+/** Slug du projet affiché (fiche individuelle) pour le menu déroulant */
+const currentProjectSlug = Astro.url.pathname.match(/\/(?:projets|projects)\/([^/]+)\/?$/)?.[1];
+
+const homeUrl = getLangUrl(lang, '/home');
+const projectsUrl = getLangUrl(lang, '/projets');
+const infoUrl = getLangUrl(lang, '/info');
+const altLang: Locale = lang === 'fr' ? 'en' : 'fr';
+const altUrl = altLang === 'fr' ? '/home' : '/en/home';
+
+const socialLinks = [
+  {
+    name: t.info.social.instagram,
+    href: 'https://www.instagram.com/marionderiot',
+    label: 'Instagram Marion Dériot',
+  },
+  {
+    name: t.info.social.linkedin,
+    href: 'https://www.linkedin.com/in/marionderiot',
+    label: 'LinkedIn Marion Dériot',
+  },
+  {
+    name: t.info.social.facebook,
+    href: 'https://www.facebook.com/marionderiot',
+    label: 'Facebook Marion Dériot',
+  },
+  {
+    name: t.info.social.pinterest,
+    href: 'https://www.pinterest.fr/marionderiot',
+    label: 'Pinterest Marion Dériot',
+  },
+];
+---
+
+<!-- Bouton hamburger — visible uniquement sur mobile -->
+<DrawerToggle lang={lang} />
+
+<!-- Sidebar desktop — masquée sur mobile/tablette -->
+<aside
+  class="sidebar max-lg:hidden flex-col justify-between py-10 px-8 z-40 flex"
+  aria-label="Navigation principale"
+>
+  <!-- ─── Logo / nom ─────────────────────────────────────────────────────── -->
+  <div>
+    <a
+      href={homeUrl}
+      class="block mb-14 group"
+      aria-label="Marion Dériot — Retour à l'accueil"
+    >
+      <span class="block font-serif text-lg font-light tracking-wide text-anthracite-300 group-hover:text-anthracite-500 transition-colors duration-400">
+        Marion Dériot
+      </span>
+      <span class="block font-sans text-xs tracking-[0.2em] uppercase text-greige-400 mt-0.5">
+        Architecte d'intérieur
+      </span>
+    </a>
+
+    <!-- ─── Navigation principale ───────────────────────────────────────── -->
+    <nav aria-label="Menu principal" class="max-h-[calc(100vh-12rem)] overflow-y-auto overflow-x-visible pr-1">
+      <ul class="space-y-1" role="list">
+        <!-- Home -->
+        <li>
+          <a
+            href={homeUrl}
+            class="nav-item"
+            aria-current={activeNav === 'home' ? 'page' : undefined}
+          >
+            {t.nav.home}
+          </a>
+        </li>
+
+        <!-- Projets avec dropdown -->
+        <li>
+          <ProjectsDropdown
+            lang={lang}
+            isActive={activeNav === 'projects'}
+            currentSlug={currentProjectSlug}
+          />
+        </li>
+
+        <!-- Info -->
+        <li>
+          <a
+            href={infoUrl}
+            class="nav-item"
+            aria-current={activeNav === 'info' ? 'page' : undefined}
+          >
+            {t.nav.info}
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <!-- ─── Bas de sidebar : réseaux sociaux + switch langue + légal ──────── -->
+  <div class="space-y-8">
+    <!-- Icônes réseaux sociaux -->
+    <nav aria-label="Réseaux sociaux">
+      <ul class="flex items-center gap-4" role="list">
+        {socialLinks.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="block text-greige-400 hover:text-anthracite-300 transition-colors duration-400"
+              aria-label={link.label}
+            >
+              <!-- Icônes SVG inline à remplacer par des vraies icônes -->
+              <span class="text-xs font-sans tracking-wide">{link.name.charAt(0)}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <!-- Liens légaux -->
+    <nav aria-label="Liens légaux">
+      <ul class="space-y-1" role="list">
+        <li>
+          <a
+            href={getLangUrl(lang, '/mentions-legales')}
+            class="text-[10px] font-sans text-greige-300 hover:text-greige-500 transition-colors duration-400 tracking-wide"
+          >
+            {t.legal.mentions}
+          </a>
+        </li>
+        <li>
+          <a
+            href={getLangUrl(lang, '/politique-confidentialite')}
+            class="text-[10px] font-sans text-greige-300 hover:text-greige-500 transition-colors duration-400 tracking-wide"
+          >
+            {t.legal.privacy}
+          </a>
+        </li>
+        <li>
+          <a
+            href={getLangUrl(lang, '/cookies')}
+            class="text-[10px] font-sans text-greige-300 hover:text-greige-500 transition-colors duration-400 tracking-wide"
+          >
+            {t.legal.cookies}
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Copyright -->
+    <p class="text-[10px] font-sans text-greige-300">
+      {t.legal.copyright(new Date().getFullYear())}
+    </p>
+  </div>
+</aside>

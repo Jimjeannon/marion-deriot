@@ -1,0 +1,56 @@
+---
+/**
+ * Sanity Studio — /admin
+ *
+ * SÉCURITÉ :
+ * - Invisible depuis le site public (aucun lien)
+ * - Exclu du sitemap.xml et de robots.txt
+ * - Authentification Sanity native
+ *
+ * Sanity Studio est rendu côté client uniquement (SPA).
+ */
+export const prerender = false;
+
+import { isSanityConfigured } from '@/lib/sanity-config';
+
+// Redirection si Sanity n'est pas configuré (ou placeholder .env invalide)
+if (!isSanityConfigured()) {
+  return Astro.redirect('/home');
+}
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studio — Marion Dériot</title>
+    <!-- Exclure du référencement -->
+    <meta name="robots" content="noindex, nofollow" />
+    <style>
+      html,
+      body,
+      #sanity-studio {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sanity-studio"></div>
+    <!--
+      Sanity Studio v3 — rendu via le module sanity/client-side
+      À configurer selon la doc : https://www.sanity.io/docs/embedded-studio
+    -->
+    <script type="module">
+      // Import dynamique pour éviter le SSR
+      // Le studio est rendu entièrement côté client
+      import { renderStudio } from 'sanity';
+      import config from '/sanity/sanity.config.ts';
+
+      renderStudio(document.getElementById('sanity-studio'), config);
+    </script>
+  </body>
+</html>

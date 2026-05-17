@@ -1,0 +1,36 @@
+---
+/**
+ * Liste des projets FR — /projets
+ */
+import MainLayout from '@/layouts/MainLayout.astro';
+import ProjectList from '@/components/sections/ProjectList.astro';
+import { getDict } from '@/i18n';
+import { getAllProjects } from '@/lib/projects';
+
+const t = getDict('fr');
+const projects = await getAllProjects();
+---
+
+<MainLayout
+  title={t.projects.metaTitle}
+  description={t.projects.metaDescription}
+  lang="fr"
+  activeNav="projects"
+>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      { '@type': 'ListItem', 'position': 1, 'name': 'Accueil', 'item': 'https://marionderiot.com/home' },
+      { '@type': 'ListItem', 'position': 2, 'name': 'Projets', 'item': 'https://marionderiot.com/projets' },
+    ],
+  })} />
+
+  <div class="px-10 py-16 lg:px-16">
+    <h1 class="font-serif text-4xl font-light text-anthracite-300 mb-16 tracking-wide">
+      {t.projects.title}
+    </h1>
+
+    <ProjectList projects={projects} lang="fr" />
+  </div>
+</MainLayout>

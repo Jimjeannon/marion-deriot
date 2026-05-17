@@ -1,0 +1,260 @@
+---
+/**
+ * Page Info / Contact FR — /info
+ * Présentation + formulaire de contact Astro Actions.
+ */
+import MainLayout from '@/layouts/MainLayout.astro';
+import { getDict } from '@/i18n';
+
+const t = getDict('fr');
+---
+
+<MainLayout
+  title={t.info.metaTitle}
+  description={t.info.metaDescription}
+  lang="fr"
+  activeNav="info"
+>
+  <!-- Schema.org LocalBusiness (info + adresse) -->
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    'name': 'Agence Marion Dériot',
+    'url': 'https://marionderiot.com',
+    'telephone': '+33686186270',
+    'email': 'marionderiot.archi@gmail.com',
+    'address': {
+      '@type': 'PostalAddress',
+      'addressLocality': 'Boulogne-Billancourt',
+      'addressRegion': 'Île-de-France',
+      'postalCode': '92100',
+      'addressCountry': 'FR',
+    },
+  })} />
+
+  <div class="px-10 py-16 lg:px-16 max-w-2xl">
+    <h1 class="font-serif text-4xl font-light text-anthracite-300 mb-16">
+      {t.info.title}
+    </h1>
+
+    <!-- ─── Photo + présentation ─────────────────────────────────────────── -->
+    <div class="mb-16">
+      <!-- Photo de l'architecte — placeholder, à remplacer par <Image> Astro + Sanity -->
+      <div class="w-48 h-60 bg-greige-100 mb-10" aria-hidden="true">
+        {/* Photo Marion Dériot */}
+      </div>
+
+      <!-- Texte de présentation -->
+      <div class="space-y-5 font-sans text-sm text-anthracite-300 leading-relaxed">
+        <p>
+          Diplômée de l'École Camondo en 1999, Marion Dériot exerce l'architecture
+          intérieure et le design depuis plus de vingt-cinq ans. Elle a collaboré
+          avec Wilmotte & Associés, Bruno Moinard et l'Agence Ecart avant de fonder
+          sa propre agence en 2009.
+        </p>
+        <p>
+          Son approche repose sur l'écoute attentive, la rigueur du détail et
+          le soin apporté aux matériaux. Chaque projet est une conception sur mesure,
+          pensée dans la durée — pour des particuliers exigeants et des professionnels
+          soucieux de la qualité de leurs espaces.
+        </p>
+        <p>
+          L'agence est basée à Boulogne-Billancourt et intervient principalement
+          à Paris et en Île-de-France.
+        </p>
+      </div>
+    </div>
+
+    <!-- ─── Coordonnées ───────────────────────────────────────────────────── -->
+    <div class="mb-16 space-y-2 font-sans text-sm text-greige-400">
+      <address class="not-italic space-y-1">
+        <p>Agence Marion Dériot</p>
+        <p>Boulogne-Billancourt — 92100</p>
+        <p>
+          <a
+            href="mailto:marionderiot.archi@gmail.com"
+            class="hover:text-anthracite-300 transition-colors duration-400"
+          >
+            marionderiot.archi@gmail.com
+          </a>
+        </p>
+        <p>
+          <a
+            href="tel:+33686186270"
+            class="hover:text-anthracite-300 transition-colors duration-400"
+          >
+            06 86 18 62 70
+          </a>
+        </p>
+      </address>
+    </div>
+
+    <!-- ─── Formulaire de contact ─────────────────────────────────────────── -->
+    <section aria-labelledby="contact-title">
+      <h2
+        id="contact-title"
+        class="font-serif text-2xl font-light text-anthracite-300 mb-8"
+      >
+        {t.info.contactTitle}
+      </h2>
+
+      <!--
+        Astro Actions — à configurer dans src/actions/index.ts
+        Rate limiting + validation Zod côté serveur obligatoires (CLAUDE.md)
+      -->
+      <form
+        id="contact-form"
+        method="POST"
+        action="/api/contact"
+        class="space-y-6"
+        novalidate
+      >
+        <!-- Nom -->
+        <div>
+          <label
+            for="name"
+            class="block font-sans text-xs tracking-wide text-greige-400 mb-2"
+          >
+            {t.info.form.name}
+            <span class="text-accent ml-1" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            required
+            autocomplete="name"
+            class="w-full border-b border-greige-200 bg-transparent py-2 font-sans text-sm text-anthracite-300 placeholder-greige-300 focus:border-anthracite-300 focus:outline-none transition-colors duration-400"
+          />
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label
+            for="email"
+            class="block font-sans text-xs tracking-wide text-greige-400 mb-2"
+          >
+            {t.info.form.email}
+            <span class="text-accent ml-1" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            class="w-full border-b border-greige-200 bg-transparent py-2 font-sans text-sm text-anthracite-300 placeholder-greige-300 focus:border-anthracite-300 focus:outline-none transition-colors duration-400"
+          />
+        </div>
+
+        <!-- Type de projet -->
+        <div>
+          <label
+            for="project-type"
+            class="block font-sans text-xs tracking-wide text-greige-400 mb-2"
+          >
+            {t.info.form.projectType}
+          </label>
+          <select
+            id="project-type"
+            name="projectType"
+            class="w-full border-b border-greige-200 bg-transparent py-2 font-sans text-sm text-anthracite-300 focus:border-anthracite-300 focus:outline-none transition-colors duration-400 appearance-none cursor-pointer"
+          >
+            <option value="">—</option>
+            <option value="residential">{t.info.form.projectTypes.residential}</option>
+            <option value="commercial">{t.info.form.projectTypes.commercial}</option>
+            <option value="hospitality">{t.info.form.projectTypes.hospitality}</option>
+            <option value="other">{t.info.form.projectTypes.other}</option>
+          </select>
+        </div>
+
+        <!-- Message -->
+        <div>
+          <label
+            for="message"
+            class="block font-sans text-xs tracking-wide text-greige-400 mb-2"
+          >
+            {t.info.form.message}
+            <span class="text-accent ml-1" aria-hidden="true">*</span>
+          </label>
+          <textarea
+            id="message"
+            name="message"
+            required
+            rows={5}
+            placeholder={t.info.form.messagePlaceholder}
+            class="w-full border-b border-greige-200 bg-transparent py-2 font-sans text-sm text-anthracite-300 placeholder-greige-300 focus:border-anthracite-300 focus:outline-none transition-colors duration-400 resize-none"
+          ></textarea>
+        </div>
+
+        <!-- Honeypot anti-spam (invisible) -->
+        <div class="sr-only" aria-hidden="true">
+          <label for="website">Ne pas remplir</label>
+          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          id="submit-btn"
+          class="font-sans text-xs tracking-[0.2em] uppercase text-anthracite-300 border-b border-anthracite-300 pb-0.5 hover:text-accent hover:border-accent transition-colors duration-400"
+        >
+          {t.info.form.submit}
+        </button>
+
+        <!-- Feedback -->
+        <div id="form-feedback" class="hidden" role="alert" aria-live="polite">
+          <p id="feedback-message" class="font-sans text-sm"></p>
+        </div>
+      </form>
+    </section>
+  </div>
+</MainLayout>
+
+<script>
+  // Validation côté client légère + feedback UX
+  const form = document.getElementById('contact-form') as HTMLFormElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const feedback = document.getElementById('form-feedback') as HTMLDivElement;
+  const feedbackMsg = document.getElementById('feedback-message') as HTMLParagraphElement;
+
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Honeypot check
+      const honey = (form.elements.namedItem('website') as HTMLInputElement)?.value;
+      if (honey) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoi en cours…';
+
+      try {
+        const data = new FormData(form);
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          body: data,
+        });
+
+        if (res.ok) {
+          form.reset();
+          showFeedback('Merci pour votre message. Marion vous répondra dans les meilleurs délais.', true);
+        } else {
+          throw new Error('Server error');
+        }
+      } catch {
+        showFeedback('Votre message n\'a pas pu être envoyé. Veuillez réessayer.', false);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Envoyer';
+      }
+    });
+  }
+
+  function showFeedback(message: string, success: boolean) {
+    if (!feedback || !feedbackMsg) return;
+    feedbackMsg.textContent = message;
+    feedbackMsg.className = `font-sans text-sm ${success ? 'text-anthracite-300' : 'text-accent'}`;
+    feedback.classList.remove('hidden');
+  }
+</script>

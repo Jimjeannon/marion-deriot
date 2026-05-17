@@ -1,0 +1,76 @@
+---
+/**
+ * Homepage FR — /home
+ * Layout sidebar. Point d'entrée après la landing.
+ * Contenu à définir avec Marion — pour l'instant page d'accueil sobre avec intro.
+ */
+import MainLayout from '@/layouts/MainLayout.astro';
+import { getDict } from '@/i18n';
+// import { getAllProjects, urlFor, getPreviewImages } from '@/lib/sanity';
+
+const t = getDict('fr');
+
+// TODO: charger projets en vedette depuis Sanity
+// const projects = await getAllProjects();
+// const featured = projects.slice(0, 3);
+
+const pageTitle = t.home.title;
+const pageDescription = t.home.metaDescription;
+---
+
+<MainLayout
+  title={pageTitle}
+  description={pageDescription}
+  lang="fr"
+  activeNav="home"
+>
+  <!-- Schema.org LocalBusiness -->
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    'name': 'Agence Marion Dériot',
+    'description': pageDescription,
+    'url': 'https://marionderiot.com',
+    'telephone': '+33686186270',
+    'email': 'marionderiot.archi@gmail.com',
+    'address': {
+      '@type': 'PostalAddress',
+      'addressLocality': 'Boulogne-Billancourt',
+      'addressRegion': 'Île-de-France',
+      'addressCountry': 'FR',
+    },
+    'geo': {
+      '@type': 'GeoCoordinates',
+      'latitude': 48.8396,
+      'longitude': 2.2297,
+    },
+    'areaServed': [
+      { '@type': 'City', 'name': 'Boulogne-Billancourt' },
+      { '@type': 'City', 'name': 'Paris' },
+      { '@type': 'State', 'name': 'Île-de-France' },
+    ],
+    'priceRange': '€€€',
+    'sameAs': [
+      'https://www.instagram.com/marionderiot',
+      'https://www.linkedin.com/in/marionderiot',
+    ],
+  })} />
+
+  <div class="min-h-screen px-10 py-16 lg:px-16">
+    <!-- H1 unique de la page -->
+    <h1 class="sr-only">{pageTitle}</h1>
+
+    <!-- Accroche visuelle — à personnaliser avec Marion -->
+    <div class="max-w-lg mt-8">
+      <p class="font-serif text-3xl font-light text-anthracite-300 leading-snug">
+        Architecture intérieure<br />
+        <em class="not-italic text-greige-400">et design</em>
+      </p>
+    </div>
+
+    <!-- Placeholder — projets en vedette (à activer avec Sanity) -->
+    <div class="mt-20 text-sm font-sans text-greige-400">
+      {/* Les projets en vedette s'afficheront ici une fois Sanity configuré */}
+    </div>
+  </div>
+</MainLayout>
