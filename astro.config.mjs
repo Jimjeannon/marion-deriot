@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 import tailwind from '@astrojs/tailwind';
 import sitemap from '@astrojs/sitemap';
+import vercel from '@astrojs/vercel/serverless';
 
 // https://astro.build/config
 export default defineConfig({
@@ -10,6 +11,9 @@ export default defineConfig({
 
   // Rendu hybride : SSG par défaut, SSR pour l'API contact et /admin
   output: 'hybrid',
+
+  // Adaptateur Vercel (requis pour output hybrid/server)
+  adapter: vercel(),
 
   // Désactiver la barre de dev Astro (gêne la landing page)
   devToolbar: { enabled: false },
