@@ -2,18 +2,15 @@
 import { defineConfig } from 'astro/config';
 import tailwind from '@astrojs/tailwind';
 import sitemap from '@astrojs/sitemap';
-import vercel from '@astrojs/vercel';
-
 // https://astro.build/config
 export default defineConfig({
   // URL du site — nécessaire pour le sitemap et les hreflang
   site: 'https://marionderiot.com',
 
-  // Rendu hybride : SSG par défaut, SSR pour l'API contact et /admin
-  output: 'hybrid',
-
-  // Adaptateur Vercel (requis pour output hybrid/server)
-  adapter: vercel(),
+  // Rendu statique — premier déploiement visuel, pas besoin de SSR
+  // TODO: repasser en hybrid + @astrojs/vercel/serverless quand le formulaire
+  // de contact et l'admin Sanity seront à activer
+  output: 'static',
 
   // Désactiver la barre de dev Astro (gêne la landing page)
   devToolbar: { enabled: false },
@@ -57,6 +54,4 @@ export default defineConfig({
 
   // Alias d'imports configurés dans tsconfig.json
   vite: {
-    // Variables d'env : uniquement via import.meta.env, jamais committées
-  },
-});
+    // Variables d'env : uniquement via import.meta.env, jamais committé

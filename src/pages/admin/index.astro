@@ -9,14 +9,8 @@
  *
  * Sanity Studio est rendu côté client uniquement (SPA).
  */
-export const prerender = false;
-
-import { isSanityConfigured } from '@/lib/sanity-config';
-
-// Redirection si Sanity n'est pas configuré (ou placeholder .env invalide)
-if (!isSanityConfigured()) {
-  return Astro.redirect('/home');
-}
+// En mode static, toujours rediriger vers /home (Sanity non configuré)
+return Astro.redirect('/home');
 ---
 
 <!doctype html>
