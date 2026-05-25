@@ -7,14 +7,12 @@ import vercel from '@astrojs/vercel/serverless';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://marionderiot.com',
-  // hybrid : toutes les pages sont statiques par défaut sauf celles qui
-  // déclarent explicitement `export const prerender = false` (admin + API).
+  // hybrid : pages statiques + routes API dynamiques (/admin/*)
   output: 'hybrid',
   adapter: vercel({
     webAnalytics: {
-      enabled: true, // Vercel Web Analytics — cookieless, pas de consentement
+      enabled: true,
     },
-    functionPerRoute: false,
   }),
   devToolbar: { enabled: false },
   integrations: [

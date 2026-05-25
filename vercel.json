@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".vercel/output",
+  "functions": {
+    ".vercel/output/functions/**": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 30
+    }
+  }
+}
