@@ -14,6 +14,7 @@ export default defineConfig({
     webAnalytics: {
       enabled: true, // Vercel Web Analytics — cookieless, pas de consentement
     },
+    functionPerRoute: false,
   }),
   devToolbar: { enabled: false },
   integrations: [
