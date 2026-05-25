@@ -10,7 +10,9 @@
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"Tests à mettre en place\""
+    "test": "echo \"Tests à mettre en place\"",
+    "clean:macos": "node scripts/clean-macos-junk.mjs",
+    "prebuild": "node scripts/clean-macos-junk.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.2.0",
