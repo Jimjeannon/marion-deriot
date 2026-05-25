@@ -2,56 +2,40 @@
 /**
  * Landing page FR — /
  *
- * Design : slideshow plein écran, immersif. Le titre est posé en haut à
- * gauche pour libérer l'image, les contrôles (dots + Entrer) en bas centré.
+ * Tous écrans : slideshow plein écran, crossfade, Ken Burns.
+ *   5 images défilent en séquence automatique.
+ *   Dots de navigation visibles sur mobile, masqués sur desktop.
  *
- * Principes :
- *  — Première image visible IMMÉDIATEMENT : rendue avec slide--on en SSR,
- *    préchargée via <link rel="preload"> dans le <head>. Aucun fondu d'entrée,
- *    aucun écran noir au chargement. Fond de page : ivoire (jamais noir).
- *  — Crossfade ultra-fluide entre les images : l'ancienne reste devant pendant
- *    qu'elle s'efface, la nouvelle est déjà pleinement opaque dessous. Pas de
- *    fond visible entre les deux à aucun instant.
- *  — Ken Burns adouci (scale 1 → 1.04, 18s) : mouvement à peine perceptible,
- *    pour éviter tout effet de « saut d'échelle » entre image sortante (1.04)
- *    et image entrante (1.00).
- *  — Cadrage cohérent : background-position center center sur toutes les
- *    images. Les formats paysage et portrait sont couverts sans crop visible.
- *  — Lisibilité du titre : gradient localisé top-left uniquement (le reste de
- *    l'image n'est pas voilée).
- *  — prefers-reduced-motion : Ken Burns, crossfade et reveals désactivés.
+ * Principes communs :
+ *  — Première image visible IMMÉDIATEMENT : preload + reveal SSR.
+ *  — Fond de page : ivoire (jamais noir entre les slides).
+ *  — prefers-reduced-motion : Ken Burns et crossfade désactivés.
  */
 import LandingLayout from '@/layouts/LandingLayout.astro';
 import { getDict } from '@/i18n';
 
 const t = getDict('fr');
 
-/**
- * Slides du slideshow.
- * Les sources pointent directement sur les fichiers présents dans
- * public/images/landing/. Attention à l'extension exacte de chaque fichier
- * (mélange .jpg / .jpeg : un seul typo et l'image ne charge plus).
- */
-const slides = [
+const images = [
   {
     src: '/images/landing/01-cuisine-verte.jpg',
-    alt: 'Cuisine sur mesure — meubles vert sauge, îlot en marbre, lustre sculptural rouge',
+    alt: 'Cuisine sur mesure — îlot central, lustre rouge, Agence Marion Dériot architecte d\'intérieur',
   },
   {
     src: '/images/landing/02-cuisine-marbre.jpeg',
-    alt: 'Cuisine ouverte — caissons bois clair, îlot marbre blanc, banquette intégrée',
+    alt: 'Cuisine en marbre blanc et bois — banquette, conception Marion Dériot, Paris',
   },
   {
     src: '/images/landing/03-cuisine-pierre.jpg',
-    alt: 'Cuisine contemporaine — façades bois filé, plan de travail pierre grise',
+    alt: 'Cuisine grise — îlot en pierre, tabourets, réalisation Agence Marion Dériot',
   },
   {
     src: '/images/landing/04-chambre-bleue.jpg',
-    alt: 'Chambre — tête de lit capitonnée, mur bleu profond, menuiserie sur mesure',
+    alt: 'Chambre bleue sur mesure — parquet chêne, Agence Marion Dériot architecte d\'intérieur',
   },
   {
     src: '/images/landing/05-chambre-naturelle.jpg',
-    alt: 'Chambre — tête de lit cannage, suspensions bois tourné, ambiance naturelle',
+    alt: 'Chambre naturelle — tête de lit rotin, suspensions bois, Marion Dériot design',
   },
 ];
 ---
@@ -61,15 +45,14 @@ const slides = [
   description={t.home.metaDescription}
   lang="fr"
 >
-  <!-- Préchargement de la première image : visible dès le premier paint -->
+  <!-- Préchargement : toutes les images sont au-dessus du fold sur desktop -->
   <Fragment slot="head">
-    <link
-      rel="preload"
-      as="image"
-      href={slides[0].src}
-      fetchpriority="high"
-    />
-    <script is:inline define:vars={{ firstSlideSrc: slides[0].src }}>
+    <link rel="preload" as="image" href={images[0].src} fetchpriority="high" />
+    <link rel="preload" as="image" href={images[1].src} fetchpriority="low" />
+    <link rel="preload" as="image" href={images[2].src} fetchpriority="low" />
+    <link rel="preload" as="image" href={images[3].src} fetchpriority="low" />
+    <link rel="preload" as="image" href={images[4].src} fetchpriority="low" />
+    <script is:inline define:vars={{ firstSlideSrc: images[0].src }}>
       (function revealLanding(src) {
         function ready() {
           document.documentElement.classList.remove('landing-pending');
@@ -85,35 +68,35 @@ const slides = [
     </script>
   </Fragment>
 
-  <!-- ─── Slideshow plein écran ──────────────────────────────────────────── -->
   <div class="landing-root" id="landing-root">
 
-    <!-- Couche 1 : slides en fond ------------------------------------------ -->
+    <!-- ── Slideshow — tous écrans ─────────────────────────────────────── -->
     <div class="slides-container" id="slides-container" aria-hidden="true">
-      {slides.map((slide, i) => (
+      {images.map((img, i) => (
         <div
           class={`slide${i === 0 ? ' slide--on' : ''}`}
           data-index={i}
-          style={`background-image: url('${slide.src}')`}
+          style={`background-image: url('${img.src}')`}
           role="img"
-          aria-label={slide.alt}
+          aria-label={img.alt}
         />
       ))}
     </div>
 
-    <!-- Couche 2 : gradient localisé top-left (lisibilité du nom) --------- -->
+    <!-- ── Gradient localisé top-left (lisibilité du nom) ────────────────── -->
     <div class="landing-title-gradient landing-chrome" aria-hidden="true" />
 
-    <!-- Couche 3 : identité en haut à gauche ------------------------------ -->
+    <!-- ── Identité — carte givrée ───────────────────────────────────────── -->
     <header class="landing-identity landing-chrome" id="landing-identity">
       <h1 class="landing-name">Marion Dériot</h1>
       <p class="landing-tagline">{t.landing.tagline}</p>
     </header>
 
-    <!-- Couche 4 : contrôles en bas centré (dots + bouton Entrer) -------- -->
+    <!-- ── Contrôles (dots mobile + bouton Entrer) ───────────────────────── -->
     <div class="landing-controls landing-chrome" id="landing-controls">
+      <!-- Dots : visibles uniquement sur mobile -->
       <div class="slide-indicators" role="tablist" aria-label="Diaporama">
-        {slides.map((_, i) => (
+        {images.map((_, i) => (
           <button
             type="button"
             role="tab"
@@ -131,9 +114,7 @@ const slides = [
         class="landing-enter"
         aria-label={t.landing.enterLabel}
       >
-        <span class="enter-line" aria-hidden="true" />
         <span class="enter-label">{t.landing.enter}</span>
-        <span class="enter-line" aria-hidden="true" />
       </button>
     </div>
 
@@ -143,45 +124,48 @@ const slides = [
   <div class="enter-veil" id="enter-veil" aria-hidden="true"></div>
 </LandingLayout>
 
-<!-- ─── Styles ──────────────────────────────────────────────────────────── -->
-<!-- is:global : évite le scoping Astro sur les classes manipulées par JS    -->
+<!-- ─── Styles ───────────────────────────────────────────────────────────── -->
 <style is:global>
-  /* ── Racine landing ────────────────────────────────────────────────────── */
+  /* ── Racine landing ─────────────────────────────────────────────────────── */
   .landing-root {
     position: fixed;
     inset: 0;
     overflow: hidden;
-    /* Fond transparent : c'est l'ivoire du <body> qui transparaît avant que
-       la première image ne soit peinte. Plus jamais d'écran noir. */
     background: transparent;
   }
 
-  /* ── Slides ────────────────────────────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════════════════════
+     SLIDESHOW — tous écrans
+     Masquer les dots sur desktop (inutiles sans touch).
+  ══════════════════════════════════════════════════════════════════════════ */
+  @media (min-width: 1024px) {
+    .slide-indicators {
+      display: none;
+    }
+  }
+
+  /* Reveal slideshow : masqué pendant landing-pending, fondu à landing-ready */
+  html.landing-pending .slide--on {
+    opacity: 0;
+  }
+  html.landing-ready .slide--on {
+    opacity: 1;
+    animation: kenBurns 18s cubic-bezier(0.33, 0, 0.67, 1) forwards;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     SLIDES — tous écrans
+  ══════════════════════════════════════════════════════════════════════════ */
   .slides-container {
     position: absolute;
     inset: 0;
   }
 
-  /*
-   * Architecture crossfade — garantie zéro fond visible :
-   *
-   *  .slide        → base : opacity 0, z-index 0
-   *  .slide--on    → image active : opacity 1, z-index 1, Ken Burns en cours
-   *  (sortante)    → inline : z-index 2 (devant), opacity 1 → 0 en transition JS
-   *
-   * L'image sortante reste TOUJOURS au-dessus de la nouvelle pendant le fondu.
-   * La nouvelle est déjà à opacity 1 en dessous. À aucun moment le fond
-   * (ivoire du body) ne peut transparaître entre les deux couches.
-   *
-   * Première slide : .slide--on est posé en SSR, opacity 1 dès le premier
-   * paint. Aucun fondu d'entrée, aucun JS requis pour la rendre visible.
-   */
-
   .slide {
     position: absolute;
     inset: 0;
     background-size: cover;
-    background-position: center center; /* cadrage uniforme — pas de saut entre slides */
+    background-position: center center;
     background-repeat: no-repeat;
     transform-origin: center center;
     opacity: 0;
@@ -189,7 +173,6 @@ const slides = [
     will-change: transform, opacity;
   }
 
-  /* Image active — Ken Burns adouci, pleinement visible, z-index 1 */
   .slide--on {
     opacity: 1;
     z-index: 1;
@@ -200,11 +183,6 @@ const slides = [
     animation-name: kenBurnsReverse;
   }
 
-  /*
-   * Ken Burns à amplitude réduite (1.00 → 1.04 / translate 0.6%) :
-   * le saut perçu entre l'image sortante (~1.04) et l'entrante (1.00) est
-   * désormais imperceptible pendant le crossfade.
-   */
   @keyframes kenBurns {
     from { transform: scale(1.00) translate(0%,    0%);    }
     to   { transform: scale(1.04) translate(-0.6%, -0.3%); }
@@ -215,24 +193,12 @@ const slides = [
     to   { transform: scale(1.04) translate( 0.6%, 0.3%); }
   }
 
-  /* ── Gradient localisé top-left ───────────────────────────────────────── */
-  /* Subtil, juste pour garantir la lisibilité du nom sur images claires.   */
-  /* Le reste de l'image reste pur, sans voile global.                       */
+  /* ── Gradient localisé top-left — retiré, remplacé par carte givrée ────── */
   .landing-title-gradient {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    pointer-events: none;
-    background:
-      linear-gradient(
-        135deg,
-        rgba(20, 19, 18, 0.55) 0%,
-        rgba(20, 19, 18, 0.25) 18%,
-        rgba(20, 19, 18, 0)    42%
-      );
+    display: none;
   }
 
-  /* ── Identité — top-left ──────────────────────────────────────────────── */
+  /* ── Identité — carte givrée ─────────────────────────────────────────────── */
   .landing-identity {
     position: absolute;
     top: clamp(1.75rem, 3.5vw, 3rem);
@@ -244,13 +210,19 @@ const slides = [
     transition:
       opacity 900ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
       transform 900ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    background: rgba(245, 243, 239, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 1.5rem 2rem;
+    border-radius: 2px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   }
 
   .landing-name {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+    font-size: clamp(1.6rem, 3.2vw, 2.5rem);
     font-weight: 300;
-    color: #F5F3EF;
+    color: #111110;
     letter-spacing: 0.04em;
     line-height: 1;
     margin: 0 0 0.5rem;
@@ -261,11 +233,11 @@ const slides = [
     font-size: 0.65rem;
     letter-spacing: 0.32em;
     text-transform: uppercase;
-    color: rgba(245, 243, 239, 0.7);
+    color: #3D3C3A;
     margin: 0;
   }
 
-  /* ── Contrôles bas-centré (dots + bouton Entrer) ──────────────────────── */
+  /* ── Contrôles bas-centré (dots + bouton Entrer) ─────────────────────────── */
   .landing-controls {
     position: absolute;
     bottom: clamp(1.75rem, 3.5vw, 2.75rem);
@@ -278,60 +250,41 @@ const slides = [
     gap: 1.25rem;
   }
 
-  /* ── Bouton "Entrer" ──────────────────────────────────────────────────── */
+  /* ── Bouton "Entrer" — carte givrée ──────────────────────────────────────── */
   .landing-enter {
     display: inline-flex;
     align-items: center;
-    gap: 1rem;
-    background: none;
+    justify-content: center;
+    background: rgba(245, 243, 239, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: none;
     cursor: pointer;
-    padding: 0.5rem 0;
-    opacity: 1;
-    transition: opacity 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    padding: 0.875rem 2.75rem;
+    border-radius: 2px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    transition:
+      background 400ms ease,
+      border-color 400ms ease,
+      box-shadow 400ms ease;
   }
 
-  .landing-enter:hover .enter-label,
-  .landing-enter:focus-visible .enter-label {
-    color: #F5F3EF;
-    letter-spacing: 0.30em;
-  }
-
-  .landing-enter:hover .enter-line,
-  .landing-enter:focus-visible .enter-line {
-    width: 2.5rem;
-    background-color: #F5F3EF;
+  .landing-enter:hover,
+  .landing-enter:focus-visible {
+    background: rgba(245, 243, 239, 0.95);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    outline: none;
   }
 
   .enter-label {
     font-family: 'DM Sans', system-ui, sans-serif;
-    font-size: 0.65rem;
-    letter-spacing: 0.26em;
+    font-size: 0.68rem;
+    letter-spacing: 0.30em;
     text-transform: uppercase;
-    color: rgba(245, 243, 239, 0.75);
-    transition:
-      color 400ms ease,
-      letter-spacing 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    color: #111110;
   }
 
-  .enter-line {
-    display: block;
-    height: 1px;
-    width: 1.75rem;
-    background-color: rgba(245, 243, 239, 0.5);
-    transition:
-      width 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-      background-color 400ms ease;
-  }
-
-  .landing-enter:focus-visible { outline: none; }
-  .landing-enter:focus-visible .enter-label {
-    text-decoration: underline;
-    text-underline-offset: 4px;
-    color: #F5F3EF;
-  }
-
-  /* ── Indicateurs de slide ─────────────────────────────────────────────── */
+  /* ── Indicateurs de slide (mobile uniquement) ────────────────────────────── */
   .slide-indicators {
     display: flex;
     gap: 0.5rem;
@@ -359,7 +312,7 @@ const slides = [
     background: rgba(245, 243, 239, 0.7);
   }
 
-  /* ── Voile ivoire — transition vers /home ─────────────────────────────── */
+  /* ── Voile ivoire — transition vers /home ────────────────────────────────── */
   .enter-veil {
     position: fixed;
     inset: 0;
@@ -375,20 +328,23 @@ const slides = [
     pointer-events: all;
   }
 
-  /* ── prefers-reduced-motion ───────────────────────────────────────────── */
+  /* ── prefers-reduced-motion ──────────────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     .slide--on,
     .landing-identity,
     .landing-enter,
     .slide-indicators,
     .slide-dot,
-    .enter-line,
     .enter-label,
     .enter-veil {
       animation: none !important;
       transition: none !important;
       transform: none !important;
     }
+
+    /* Slideshow : image visible immédiatement */
+    html.landing-pending .slide--on,
+    html.landing-ready  .slide--on { opacity: 1 !important; }
 
     .slide      { opacity: 0 !important; }
     .slide--on  { opacity: 1 !important; }
@@ -397,32 +353,29 @@ const slides = [
   }
 </style>
 
-<!-- ─── Script slideshow + transition "entrée" ──────────────────────────── -->
+<!-- ─── Script slideshow (mobile) + transition "entrée" ─────────────────── -->
 <script>
-  // ── Références DOM ────────────────────────────────────────────────────────
-  const slides     = Array.from(document.querySelectorAll<HTMLElement>('.slide'));
-  const dots       = Array.from(document.querySelectorAll<HTMLButtonElement>('.slide-dot'));
-  const enterBtn   = document.getElementById('landing-enter-btn')  as HTMLButtonElement;
-  const enterVeil  = document.getElementById('enter-veil')         as HTMLElement;
-  // ── Constantes timing ─────────────────────────────────────────────────────
-  // 5,5 s entre slides + 1,6 s de crossfade : très long fondu pour que la
-  // bascule soit imperceptible, jamais "coupée".
-  const INTERVAL   = 5500;
-  const FADE_MS    = 1600;
+  // ── Références DOM ──────────────────────────────────────────────────────────
+  const slides    = Array.from(document.querySelectorAll<HTMLElement>('.slide'));
+  const dots      = Array.from(document.querySelectorAll<HTMLButtonElement>('.slide-dot'));
+  const enterBtn  = document.getElementById('landing-enter-btn')  as HTMLButtonElement;
+  const enterVeil = document.getElementById('enter-veil')         as HTMLElement;
+
+  // ── Constantes timing ───────────────────────────────────────────────────────
+  const INTERVAL  = 5500;
+  const FADE_MS   = 1600;
   const KB_REVERSE = 'slide--kb-reverse';
 
   let current = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ── Utilitaire : relance une animation CSS via reflow forcé ───────────────
   function resetKB(el: HTMLElement) {
     el.style.animation = 'none';
     void el.offsetHeight;
     el.style.removeProperty('animation');
   }
 
-  /** Retire uniquement les styles posés par le JS — jamais cssText (effacerait background-image). */
   function clearSlideRuntimeStyles(el: HTMLElement) {
     el.style.removeProperty('z-index');
     el.style.removeProperty('opacity');
@@ -439,21 +392,13 @@ const slides = [
     });
   }
 
-  // ── Changement de slide — crossfade garanti zéro fond visible ────────────
-  //
-  // Principe :
-  //   1. Nouvelle slide affichée en dessous (slide--on, z-index 1, KB lancé)
-  //   2. Ancienne slide restée au-dessus (inline z-index:2) avec opacity:1 figée
-  //   3. Reflow forcé → le navigateur valide opacity:1 comme état "avant"
-  //   4. Inline transition opacity 1→0 déclenchée : fondu parfait, jamais de
-  //      teinte de fond entre les deux couches.
+  // ── Changement de slide — crossfade garanti zéro fond visible ──────────────
   function goTo(index: number) {
     if (index === current) return;
 
     const oldEl = slides[current];
     const newEl = slides[index];
 
-    // Bascule instantanée si mouvement réduit (autoplay actif, sans fondu/KB)
     if (prefersReduced) {
       clearSlideRuntimeStyles(oldEl);
       oldEl.classList.remove('slide--on', KB_REVERSE);
@@ -465,18 +410,15 @@ const slides = [
       return;
     }
 
-    // Indicateurs
     updateDots(index);
     current = index;
 
-    // ── Étape 1 : nouvelle slide visible en dessous ───────────────────────
     clearSlideRuntimeStyles(newEl);
     newEl.classList.remove('slide--on', KB_REVERSE);
     resetKB(newEl);
     newEl.classList.toggle(KB_REVERSE, index % 2 === 1);
     newEl.classList.add('slide--on');
 
-    // ── Étape 2 : ancienne slide — capturer sa position KB exacte ────────
     const frozenT = window.getComputedStyle(oldEl).transform;
     oldEl.classList.remove('slide--on');
     if (frozenT && frozenT !== 'none') {
@@ -486,14 +428,11 @@ const slides = [
     oldEl.style.opacity    = '1';
     oldEl.style.transition = '';
 
-    // ── Étape 3 : reflow ─────────────────────────────────────────────────
     void oldEl.offsetHeight;
 
-    // ── Étape 4 : déclencher le fondu (long, courbe quasi-sinusoïdale) ───
     oldEl.style.transition = `opacity ${FADE_MS}ms cubic-bezier(0.4, 0, 0.6, 1)`;
     oldEl.style.opacity    = '0';
 
-    // ── Étape 5 : nettoyage après le fondu ────────────────────────────────
     setTimeout(() => {
       clearSlideRuntimeStyles(oldEl);
       oldEl.classList.remove(KB_REVERSE);
@@ -504,12 +443,11 @@ const slides = [
     goTo((current + 1) % slides.length);
   }
 
-  // ── Autoplay (bascule instantanée si prefers-reduced-motion) ─────────────
+  // ── Autoplay (mobile slideshow uniquement) ──────────────────────────────────
   if (slides.length > 1) {
     timer = setInterval(goNext, INTERVAL);
   }
 
-  // ── Navigation manuelle (dots) ────────────────────────────────────────────
   dots.forEach((dot, i) => {
     dot.addEventListener('click', () => {
       if (i === current) return;
@@ -519,7 +457,6 @@ const slides = [
     });
   });
 
-  // ── Nettoyage au départ (View Transitions) ─────────────────────────────────
   document.addEventListener('astro:before-preparation', () => {
     if (timer) clearInterval(timer);
   });

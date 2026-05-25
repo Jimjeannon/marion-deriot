@@ -164,3 +164,16 @@ export function resolveImageUrl(
   }
   return null;
 }
+
+/**
+ * Récupère le document "info" (photo + infos Marion Dériot)
+ */
+export async function getInfoDocument(): Promise<{
+  title?: string;
+  image?: SanityImage;
+} | null> {
+  if (!isSanityConfigured()) return null;
+  return getSanityClient().fetch(
+    `*[_type == "info" && _id == "info-main"][0] { title, image }`
+  );
+}

@@ -3,6 +3,7 @@ import { getDict, getProjectUrl } from '@/i18n';
 import type { Locale } from '@/i18n';
 import type { SiteProject } from '@/lib/projects';
 import { getLocalized, getProjectMetaLine, getProjectSlug } from '@/lib/projects';
+import { resolveImageUrl } from '@/lib/sanity';
 
 interface Props {
   projects: SiteProject[];
@@ -14,35 +15,94 @@ const t = getDict(lang);
 ---
 
 <ul
-  class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-12"
+  class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-14"
   role="list"
   aria-label={t.projects.title}
 >
-  {projects.map((project) => {
+  {projects.map((project, idx) => {
     const slug = getProjectSlug(project, lang);
     const title = getLocalized(project.title, lang);
-    const description = getLocalized(project.description, lang);
     const metaLine = getProjectMetaLine(project, lang);
+
+    // Première image preview, sinon première image de la galerie
+    const previewImg =
+      project.gallery.find((img) => img.isPreview) ?? project.gallery[0] ?? null;
+    const imgSrc = previewImg ? (resolveImageUrl(previewImg, 900) ?? '') : '';
+    const imgAlt = previewImg?.alt ? getLocalized(previewImg.alt, lang) : title;
+
     return (
       <li>
         <a
           href={getProjectUrl(lang, slug)}
-          class="group block"
+          class="project-card group block"
           aria-label={`${t.projects.viewProject} : ${title}`}
         >
-          <p class="font-sans text-xs tracking-[0.2em] text-anthracite-300 uppercase group-hover:text-anthracite-500 transition-colors duration-400 mb-2">
+          {/* Image preview */}
+          <div class="project-card__img-wrap">
+            {imgSrc ? (
+              <img
+                src={imgSrc}
+                alt={imgAlt}
+                class="project-card__img"
+                loading={idx < 4 ? 'eager' : 'lazy'}
+                decoding="async"
+              />
+            ) : (
+              <div class="project-card__img-placeholder" aria-hidden="true" />
+            )}
+          </div>
+
+          {/* Titre + méta */}
+          <p class="project-card__title font-sans text-xs tracking-[0.2em] text-anthracite-300 uppercase group-hover:text-anthracite-500 transition-colors duration-400 mt-3 mb-1">
             {title}
           </p>
           {metaLine && (
-            <p class="font-sans text-xs text-greige-400 mb-3 tracking-wide">
+            <p class="font-sans text-xs text-greige-400 tracking-wide">
               {metaLine}
             </p>
           )}
-          <p class="font-serif text-base font-light text-greige-500 leading-relaxed line-clamp-3">
-            {description}
-          </p>
         </a>
       </li>
     );
   })}
 </ul>
+
+<style is:global>
+  /* ── Carte projet ────────────────────────────────────────────────────── */
+  .project-card__img-wrap {
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    background: #EDE9E3;
+  }
+
+  .project-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.92);
+    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
+                filter 600ms ease;
+  }
+
+  .project-card:hover .project-card__img,
+  .project-card:focus-visible .project-card__img {
+    transform: scale(1.03);
+    filter: saturate(1);
+  }
+
+  .project-card__img-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #EDE9E3;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .project-card__img {
+      transition: none !important;
+    }
+    .project-card:hover .project-card__img {
+      transform: none !important;
+    }
+  }
+</style>

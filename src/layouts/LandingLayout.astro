@@ -47,6 +47,10 @@ const siteName = 'Marion Dériot — Architecte d\'intérieur';
       html.landing-ready .slide--on {
         opacity: 1 !important;
       }
+      /* Triptique : masquer les panneaux avant que la 1ère image soit chargée */
+      html.landing-pending .panel-bg {
+        opacity: 0;
+      }
       html.landing-ready .landing-chrome {
         visibility: visible;
         opacity: 1;

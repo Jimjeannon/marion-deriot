@@ -17,7 +17,7 @@ interface Props {
 const { lang, isActive = false, currentSlug } = Astro.props;
 const t = getDict(lang);
 const projects = await getAllProjects();
-const initiallyOpen = isActive;
+const initiallyOpen = true;
 ---
 
 <div
@@ -52,7 +52,7 @@ const initiallyOpen = isActive;
     id="projects-list"
     data-projects-list
     class:list={[
-      'mt-1 pl-3 space-y-1',
+      'projects-list mt-1 pl-3 space-y-1',
       !initiallyOpen && 'hidden',
     ]}
     role="list"
@@ -93,16 +93,30 @@ const initiallyOpen = isActive;
   </ul>
 </div>
 
-<script>
-  type DropdownController = { setOpen: (open: boolean) => void; isOpen: () => boolean };
+<style>
+  /* ── Liste projets scrollable sans scrollbar visible ──────────────────── */
+  .projects-list {
+    max-height: 34vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .projects-list::-webkit-scrollbar {
+    display: none;
+  }
+</style>
 
-  const controllers = new WeakMap<Element, DropdownController>();
-  let docListenerBound = false;
+<script>
+  // AbortController pour nettoyer les listeners à chaque navigation
+  let dropdownAbort: AbortController | null = null;
 
   function initProjectsDropdown() {
-    document.querySelectorAll('[data-projects-dropdown]').forEach((wrapper) => {
-      if (controllers.has(wrapper)) return;
+    // Annuler les listeners de la page précédente
+    dropdownAbort?.abort();
+    dropdownAbort = new AbortController();
+    const { signal } = dropdownAbort;
 
+    document.querySelectorAll('[data-projects-dropdown]').forEach((wrapper) => {
       const btn = wrapper.querySelector('[data-projects-toggle]') as HTMLButtonElement | null;
       const list = wrapper.querySelector('[data-projects-list]') as HTMLElement | null;
       const chevron = wrapper.querySelector('[data-projects-chevron]') as SVGElement | null;
@@ -118,36 +132,44 @@ const initiallyOpen = isActive;
         chevron?.classList.toggle('rotate-180', open);
       };
 
+      // Appliquer l'état initial
       setOpen(initiallyOpen);
-      controllers.set(wrapper, { setOpen, isOpen: () => isOpen });
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         setOpen(!isOpen);
-      });
+      }, { signal });
 
       btn.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && isOpen) {
           setOpen(false);
           btn.focus();
         }
-      });
+      }, { signal });
+
+      // Fermer si clic en dehors
+      document.addEventListener('click', (e) => {
+        if (isOpen && !wrapper.contains(e.target as Node)) {
+          setOpen(false);
+        }
+      }, { signal });
     });
 
-    if (!docListenerBound) {
-      docListenerBound = true;
-      document.addEventListener('click', (e) => {
-        document.querySelectorAll('[data-projects-dropdown]').forEach((wrapper) => {
-          const ctrl = controllers.get(wrapper);
-          if (!ctrl?.isOpen()) return;
-          if (!wrapper.contains(e.target as Node)) {
-            ctrl.setOpen(false);
-          }
-        });
+    // Fermer le dropdown si une navigation View Transitions démarre
+    document.addEventListener('astro:before-preparation', () => {
+      document.querySelectorAll('[data-projects-dropdown]').forEach((wrapper) => {
+        const btn = wrapper.querySelector('[data-projects-toggle]') as HTMLButtonElement | null;
+        const list = wrapper.querySelector('[data-projects-list]') as HTMLElement | null;
+        const chevron = wrapper.querySelector('[data-projects-chevron]') as SVGElement | null;
+        if (btn && list) {
+          btn.setAttribute('aria-expanded', 'false');
+          list.classList.add('hidden');
+          chevron?.classList.remove('rotate-180');
+        }
       });
-    }
+    }, { signal });
   }
 
-  initProjectsDropdown();
+  // Initialiser à chaque chargement de page (premier chargement + navigations)
   document.addEventListener('astro:page-load', initProjectsDropdown);
 </script>

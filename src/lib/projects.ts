@@ -69,12 +69,18 @@ function mergeWithCatalog(sanityProject: SanityProject): SiteProject {
 export async function getAllProjects(): Promise<SiteProject[]> {
   if (isSanityConfigured()) {
     try {
-      const projects = await getSanityProjects();
-      if (projects.length > 0) {
-        return projects.map(mergeWithCatalog);
-      }
+      const sanityProjects = await getSanityProjects();
+      const siteProjects = sanityProjects.map(mergeWithCatalog);
+
+      // Inclure aussi les projets du catalogue local pas encore migrés vers Sanity
+      const sanitySlugsFr = new Set(sanityProjects.map((p) => p.slug.fr.current));
+      const catalogOnly = PROJECTS_CATALOG.filter(
+        (p) => !sanitySlugsFr.has(p.slug.fr.current)
+      );
+
+      return [...siteProjects, ...catalogOnly];
     } catch {
-      /* catalogue local */
+      /* fallback catalogue local */
     }
   }
   return PROJECTS_CATALOG;

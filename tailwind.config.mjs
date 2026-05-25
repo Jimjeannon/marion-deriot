@@ -69,8 +69,8 @@ export default {
       // ─── Espacement ───────────────────────────────────────────────────────
       // Généreux — espace blanc, marges franches
       spacing: {
-        'sidebar': '300px',
-        'sidebar-sm': '280px',
+        'sidebar': '240px',
+        'sidebar-sm': '220px',
       },
 
       // ─── Easings personnalisés ────────────────────────────────────────────

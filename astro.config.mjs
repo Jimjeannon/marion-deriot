@@ -1,46 +1,30 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import tailwind from '@astrojs/tailwind';
+import vercel from '@astrojs/vercel/serverless';
 import sitemap from '@astrojs/sitemap';
+
 // https://astro.build/config
 export default defineConfig({
-  // URL du site — nécessaire pour le sitemap et les hreflang
   site: 'https://marionderiot.com',
-
-  // Rendu statique — premier déploiement visuel, pas besoin de SSR
-  // TODO: repasser en hybrid + @astrojs/vercel/serverless quand le formulaire
-  // de contact et l'admin Sanity seront à activer
-  output: 'static',
-
-  // Désactiver la barre de dev Astro (gêne la landing page)
+  // hybrid : toutes les pages sont statiques par défaut sauf celles qui
+  // déclarent explicitement `export const prerender = false` (admin + API).
+  output: 'hybrid',
+  adapter: vercel({
+    webAnalytics: {
+      enabled: true, // Vercel Web Analytics — cookieless, pas de consentement
+    },
+  }),
   devToolbar: { enabled: false },
-
   integrations: [
     tailwind({
       applyBaseStyles: false,
     }),
     sitemap({
-      // Exclure /admin du sitemap — OBLIGATOIRE (CLAUDE.md)
-      filter: (page) => !page.includes('/admin'),
-      // i18n : générer les entrées alternates FR/EN
-      i18n: {
-        defaultLocale: 'fr',
-        locales: {
-          fr: 'fr-FR',
-          en: 'en-US',
-        },
-      },
-      // Priorités par type de page
-      customPages: [
-        'https://marionderiot.com/',
-        'https://marionderiot.com/home',
-        'https://marionderiot.com/projets',
-        'https://marionderiot.com/info',
-      ],
+      // Exclude admin routes
+      filter: (page) => !page?.includes('/admin'),
     }),
   ],
-
-  // i18n — FR par défaut, EN sur /en/
   i18n: {
     defaultLocale: 'fr',
     locales: ['fr', 'en'],
@@ -48,10 +32,15 @@ export default defineConfig({
       prefixDefaultLocale: false,
     },
   },
-
-  // View Transitions activées par défaut via le layout
-  // (activées composant par composant avec <ViewTransitions />)
-
-  // Alias d'imports configurés dans tsconfig.json
   vite: {
-    // Variables d'env : uniquement via import.meta.env, jamais committé
+    // Optimisation build
+    build: {
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+        },
+      },
+    },
+  },
+});

@@ -32,10 +32,23 @@ interface Props {
 const { project, lang } = Astro.props;
 const t = getDict(lang);
 
-const previewImages = getPreviewImages(project).slice(0, 2);
 const allImages: SanityImage[] = project.gallery ?? [];
 const hasGallery = allImages.length > 0;
 const title = getLocalized(project.title, lang);
+
+// Toujours exactement 2 images en preview — compléter avec la galerie si besoin
+const rawPreview = getPreviewImages(project).slice(0, 2);
+const previewImages: SanityImage[] = (() => {
+  if (rawPreview.length >= 2) return rawPreview.slice(0, 2);
+  // Compléter avec des images de la galerie non déjà incluses
+  const extras = allImages.filter((img) => !rawPreview.includes(img));
+  const padded = [...rawPreview, ...extras].slice(0, 2);
+  // Si on n'a qu'une seule image au total, la répéter pour tenir le layout
+  if (padded.length === 1) return [padded[0], padded[0]];
+  return padded;
+})();
+
+const totalCount = allImages.length;
 
 const previewItems = previewImages.map((img) => {
   const index = allImages.findIndex((g) => g === img);
@@ -75,6 +88,10 @@ const openLabel = t.projects.openSlideshow;
             decoding="async"
             fetchpriority={i === 0 ? 'high' : 'auto'}
           />
+          {/* Overlay au survol — indique le nombre d'images du projet */}
+          <span class="project-gallery__overlay" aria-hidden="true">
+            <span class="project-gallery__count">{totalCount}</span>
+          </span>
         </button>
       ))}
     </div>
@@ -291,6 +308,12 @@ const openLabel = t.projects.openSlideshow;
     // ─── Open / close ─────────────────────────────────────────────────────
     function open(index) {
       lastFocus = document.activeElement;
+      // Déplacer l'overlay en enfant direct de <body> pour sortir du
+      // stacking context de <main> (view-transition-name) et s'afficher
+      // au-dessus de la sidebar (z-40) avec z-index: 1000.
+      if (overlay.parentElement !== document.body) {
+        document.body.appendChild(overlay);
+      }
       current = Math.max(0, Math.min(index, total - 1));
       overlay.classList.add('slideshow--open');
       overlay.setAttribute('aria-hidden', 'false');
@@ -437,27 +460,36 @@ const openLabel = t.projects.openSlideshow;
 
 <style is:global>
   /* ──────────────────────────────────────────────────────────────────────
-     PAGE PROJET — plein écran sans scroll
+     PAGE PROJET — cadre blanc centré, fond greige autour
+     Inspiré du layout gallery : marges généreuses autour du cadre blanc,
+     padding intérieur, 2 images côte à côte séparées par 3 px.
      ────────────────────────────────────────────────────────────────────── */
   .project-gallery {
-    /* 100dvh : dynamic viewport height — gère la barre d'adresse mobile */
     height: 100vh;
     height: 100dvh;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    padding: clamp(1.5rem, 3.5vw, 3rem) clamp(1.5rem, 4vw, 4rem) clamp(1.5rem, 3.5vw, 3rem);
+    /*
+     * Padding externe = fond greige visible autour du cadre blanc.
+     * Haut : compact (titre + espace).
+     * Côtés et bas : généreux pour "flotter" le cadre dans la page.
+     */
+    padding: clamp(1.25rem, 2vw, 2rem)
+             clamp(2rem, 4vw, 4rem)
+             clamp(1.75rem, 3vw, 3rem);
     overflow: hidden;
+    background: transparent; /* le fond vient du body/layout */
   }
 
   .project-gallery__title {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-weight: 300;
-    /* Beaucoup plus généreux */
-    font-size: clamp(2.75rem, 7vw, 5.5rem);
-    letter-spacing: 0.035em;
-    color: #2A2926;
-    margin: 0 0 clamp(1rem, 2.5vh, 2rem);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-weight: 400;
+    font-size: clamp(0.6rem, 0.85vw, 0.72rem);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #9E9489;
+    margin: 0 0 clamp(0.75rem, 1.5vh, 1.25rem);
     line-height: 1;
     flex: 0 0 auto;
   }
@@ -465,64 +497,113 @@ const openLabel = t.projects.openSlideshow;
   .project-gallery__grid {
     display: flex;
     flex: 1 1 auto;
-    gap: clamp(0.75rem, 1.5vw, 1.25rem);
-    /* Critique : laisse les enfants flex se contracter dans l'espace disponible */
+    /*
+     * Cadre blanc — fond blanc, padding intérieur généreux,
+     * gap de 3 px entre les images (séparateur discret).
+     */
+    background: #FFFFFF;
+    padding: clamp(14px, 2vw, 26px);
+    gap: clamp(14px, 2vw, 26px);
     min-height: 0;
-    justify-content: center;
     align-items: stretch;
   }
 
-  /* Cellule = bouton occupant la hauteur dispo */
+  /* Cellule — bouton, occupe la moitié du cadre blanc */
   .project-gallery__cell {
     flex: 1 1 0;
     min-width: 0;
     min-height: 0;
-    height: 100%;
     padding: 0;
     margin: 0;
     border: 0;
     background: transparent;
-    cursor: zoom-in;
-    position: relative;
+    cursor: pointer;
     overflow: hidden;
-    isolation: isolate;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
+    position: relative;
   }
 
   .project-gallery__cell:focus-visible {
     outline: 2px solid #2A2926;
-    outline-offset: 4px;
+    outline-offset: 3px;
   }
 
-  /* Image affichée ENTIÈREMENT, pas de crop, contrainte à la hauteur dispo */
+  /* Image — remplit sa cellule sans déformation */
   .project-gallery__img {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     display: block;
     transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
-                filter 600ms cubic-bezier(0.22, 1, 0.36, 1);
+                filter 600ms ease;
     will-change: transform;
   }
 
   .project-gallery__cell:hover .project-gallery__img,
   .project-gallery__cell:focus-visible .project-gallery__img {
-    transform: scale(1.018);
-    filter: brightness(0.97);
+    transform: scale(1.02);
+    filter: brightness(0.88);
   }
 
-  /* Empilement mobile — les deux images l'une sous l'autre, toujours sans scroll */
+  /* ── Overlay — fond gradient bas + compteur d'images ─────────────────── */
+  .project-gallery__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 0 1.1rem 1rem 0;
+    /* Gradient bas vers haut — assombrit subtilement le bas de l'image */
+    background: linear-gradient(
+      to top,
+      rgba(30, 25, 20, 0.38) 0%,
+      rgba(30, 25, 20, 0.10) 35%,
+      transparent 65%
+    );
+    opacity: 0;
+    transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+
+  .project-gallery__cell:hover .project-gallery__overlay,
+  .project-gallery__cell:focus-visible .project-gallery__overlay {
+    opacity: 1;
+  }
+
+  /* Compteur — nombre total d'images, typographie éditoriale */
+  .project-gallery__count {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 0.6rem;
+    font-weight: 400;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(255, 252, 247, 0.88);
+    line-height: 1;
+    /* Petit suffixe "photos" intégré via pseudo-element */
+    display: flex;
+    align-items: baseline;
+    gap: 0.35em;
+  }
+
+  .project-gallery__count::after {
+    content: 'photos';
+    font-size: 0.55rem;
+    letter-spacing: 0.22em;
+    opacity: 0.72;
+  }
+
+  /* Mobile — empilement vertical */
   @media (max-width: 767px) {
+    .project-gallery {
+      padding: clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 1.5rem) clamp(1.25rem, 3vw, 2rem);
+    }
     .project-gallery__grid {
       flex-direction: column;
+      padding: clamp(8px, 2vw, 14px);
+      gap: clamp(8px, 2vw, 14px);
     }
     .project-gallery__title {
-      font-size: clamp(2rem, 9vw, 3rem);
-      margin-bottom: clamp(0.75rem, 2vh, 1.25rem);
+      margin-bottom: clamp(0.5rem, 1.5vh, 1rem);
     }
   }
 
@@ -713,14 +794,20 @@ const openLabel = t.projects.openSlideshow;
     .slideshow__image,
     .slideshow__btn,
     .slideshow__topbar,
-    .project-gallery__img {
+    .project-gallery__img,
+    .project-gallery__overlay {
       transition: none !important;
       animation: none !important;
     }
     .project-gallery__cell:hover .project-gallery__img,
     .project-gallery__cell:focus-visible .project-gallery__img {
       transform: none !important;
-      filter: none !important;
+      filter: brightness(0.88) !important;
+    }
+    /* L'overlay reste visible sans animation */
+    .project-gallery__cell:hover .project-gallery__overlay,
+    .project-gallery__cell:focus-visible .project-gallery__overlay {
+      opacity: 1 !important;
     }
   }
 </style>

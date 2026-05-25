@@ -3,10 +3,14 @@
  * Page Info / Contact FR — /info
  * Présentation + formulaire de contact Astro Actions.
  */
+import { Image } from 'astro:assets';
 import MainLayout from '@/layouts/MainLayout.astro';
 import { getDict } from '@/i18n';
+import { getInfoDocument, resolveImageUrl } from '@/lib/sanity';
 
 const t = getDict('fr');
+const infoDoc = await getInfoDocument();
+const imageUrl = infoDoc?.image ? resolveImageUrl(infoDoc.image, 384) : null;
 ---
 
 <MainLayout
@@ -39,10 +43,19 @@ const t = getDict('fr');
 
     <!-- ─── Photo + présentation ─────────────────────────────────────────── -->
     <div class="mb-16">
-      <!-- Photo de l'architecte — placeholder, à remplacer par <Image> Astro + Sanity -->
-      <div class="w-48 h-60 bg-greige-100 mb-10" aria-hidden="true">
-        {/* Photo Marion Dériot */}
-      </div>
+      <!-- Photo de l'architecte — depuis Sanity ou fallback -->
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={infoDoc?.image?.alt?.fr || 'Marion Dériot'}
+          class="w-48 h-60 object-cover object-center mb-10"
+          loading="lazy"
+        />
+      ) : (
+        <div class="w-48 h-60 bg-greige-100 mb-10" aria-hidden="true">
+          {/* Photo Marion Dériot — à ajouter via /admin */}
+        </div>
+      )}
 
       <!-- Texte de présentation -->
       <div class="space-y-5 font-sans text-sm text-anthracite-300 leading-relaxed">

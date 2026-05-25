@@ -18,7 +18,7 @@
   --color-accent: theme('colors.accent.DEFAULT');
   --color-accent-light: theme('colors.accent.light');
   --color-border: theme('colors.greige.100');
-  --color-sidebar-bg: theme('colors.ivory.50');
+  --color-sidebar-bg: var(--color-bg);
 
   /* Sidebar */
   --sidebar-width: theme('spacing.sidebar');
@@ -102,6 +102,24 @@
     width: var(--sidebar-width);
     background-color: var(--color-sidebar-bg);
     border-right: 1px solid var(--color-border);
+  }
+
+  /* Nav items — overrides pour fond ivoire de la sidebar */
+  .sidebar .nav-item,
+  #mobile-drawer .nav-item {
+    color: var(--color-text-muted);
+  }
+
+  .sidebar .nav-item:hover,
+  .sidebar .nav-item[aria-current='page'],
+  #mobile-drawer .nav-item:hover,
+  #mobile-drawer .nav-item[aria-current='page'] {
+    color: var(--color-text);
+  }
+
+  .sidebar .nav-item[aria-current='page']::after,
+  #mobile-drawer .nav-item[aria-current='page']::after {
+    background-color: var(--color-accent);
   }
 
   /* Contenu principal (décalé de la largeur sidebar) */
