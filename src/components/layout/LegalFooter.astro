@@ -1,0 +1,47 @@
+---
+/**
+ * LegalFooter — Pied de page discret en bas du contenu principal.
+ * Regroupe les liens légaux (mentions, confidentialité, cookies) et le copyright,
+ * retirés de la sidebar pour alléger la navigation principale.
+ */
+import { getDict, getLangUrl } from '@/i18n';
+import type { Locale } from '@/i18n';
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang);
+
+const legalLinks = [
+  { href: getLangUrl(lang, '/mentions-legales'), label: t.legal.mentions },
+  { href: getLangUrl(lang, '/politique-confidentialite'), label: t.legal.privacy },
+  { href: getLangUrl(lang, '/cookies'), label: t.legal.cookies },
+];
+---
+
+<footer class="border-t border-greige-100 px-10 py-6 lg:px-16">
+  <nav aria-label="Liens légaux">
+    <ul
+      class="flex flex-wrap items-center gap-x-6 gap-y-2"
+      role="list"
+    >
+      {legalLinks.map((link) => (
+        <li>
+          <a
+            href={link.href}
+            class="text-[10px] font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide"
+          >
+            {link.label}
+          </a>
+        </li>
+      ))}
+      <li>
+        <p class="text-[10px] font-sans text-greige-400">
+          {t.legal.copyright(new Date().getFullYear())}
+        </p>
+      </li>
+    </ul>
+  </nav>
+</footer>

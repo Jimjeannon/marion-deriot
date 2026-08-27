@@ -1,0 +1,366 @@
+---
+/**
+ * Homepage FR — /home (MODIFIÉ)
+ * Layout sidebar. Images dynamiques depuis Sanity (projets).
+ *
+ * Changements :
+ *  - Importer getAllProjects, getPreviewImages, resolveImageUrl
+ *  - Charger dynamiquement 6 projets depuis Sanity
+ *  - Images cliquables → liens vers pages projets
+ *  - Overlay titre au survol (desktop) + visible mobile
+ *  - Responsive amélioré (breakpoint tablette + hauteurs)
+ */
+import MainLayout from '@/layouts/MainLayout.astro';
+import { getDict } from '@/i18n';
+import { getAllProjects } from '@/lib/projects';
+import { resolveImageUrl } from '@/lib/sanity';
+import { getPreviewImages, getLocalized } from '@/lib/projects';
+
+const t = getDict('fr');
+
+// ─── Charger les 6 premiers projets depuis Sanity ────────────────────────────
+const projects = await getAllProjects();
+const featured = projects.slice(0, 6);
+
+// ─── Construire les données des images pour la homepage ─────────────────────
+const homeImages = featured.map(project => {
+  const previewImages = getPreviewImages(project);
+
+  // Prendre la 1ère image de preview (ou fallback sur la galerie complète)
+  const imageData = previewImages[0] || project.gallery?.[0];
+
+  if (!imageData) {
+    console.warn(`[home] Projet ${project.title.fr} n'a pas d'image`);
+    return null;
+  }
+
+  return {
+    src: resolveImageUrl(imageData, 1200) ?? '/images/placeholder.webp',
+    alt: imageData.alt ? getLocalized(imageData.alt, 'fr') : `${project.title.fr} — architecture intérieure`,
+    projectSlug: project.slug.fr.current,
+    projectTitle: project.title.fr,
+    projectLocation: project.location ? getLocalized(project.location, 'fr') : '',
+  };
+}).filter(Boolean); // Éliminer les null
+
+const pageTitle = t.home.title;
+const pageDescription = t.home.metaDescription;
+---
+
+<MainLayout
+  title={pageTitle}
+  description={pageDescription}
+  lang="fr"
+  activeNav="home"
+>
+  <!-- Schema.org LocalBusiness -->
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    'name': 'Agence Marion Dériot',
+    'description': pageDescription,
+    'url': 'https://marionderiot.com',
+    'telephone': '+33686186270',
+    'email': 'marionderiot.archi@gmail.com',
+    'address': {
+      '@type': 'PostalAddress',
+      'addressLocality': 'Boulogne-Billancourt',
+      'addressRegion': 'Île-de-France',
+      'addressCountry': 'FR',
+    },
+    'geo': {
+      '@type': 'GeoCoordinates',
+      'latitude': 48.8396,
+      'longitude': 2.2297,
+    },
+    'areaServed': [
+      { '@type': 'City', 'name': 'Boulogne-Billancourt' },
+      { '@type': 'City', 'name': 'Paris' },
+      { '@type': 'State', 'name': 'Île-de-France' },
+    ],
+    'priceRange': '€€€',
+    'sameAs': [
+      'https://www.instagram.com/marionderiot',
+      'https://www.linkedin.com/in/marionderiot',
+    ],
+  })} />
+
+  <div class="home-content">
+    <!-- H1 unique de la page -->
+    <h1 class="sr-only">{pageTitle}</h1>
+
+    <!-- ─── Images plein écran — dynamiques depuis Sanity ─────────────────── -->
+    <section class="home-materials" aria-label="Réalisations Marion Dériot">
+      <div class="home-materials__grid">
+        {homeImages.map((image, index) => (
+          <a
+            href={`/projets/${image.projectSlug}`}
+            class="home-materials__cell home-materials__cell--link"
+            title={`Voir le projet ${image.projectTitle}`}
+            aria-label={`${image.projectTitle} — architecture intérieure`}
+          >
+            <img
+              src={image.src}
+              alt={image.alt}
+              class="home-materials__img"
+              loading={index === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              fetchpriority={index === 0 ? 'high' : 'auto'}
+              width="1200"
+              height="800"
+            />
+            {/* Overlay au survol — affiche titre du projet */}
+            <div class="home-materials__overlay" aria-hidden="true">
+              <div class="home-materials__overlay-content">
+                <div class="home-materials__project-title">{image.projectTitle}</div>
+                {image.projectLocation && (
+                  <div class="home-materials__project-location">{image.projectLocation}</div>
+                )}
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  </div>
+
+  <style is:global>
+    /* ── Home plein écran — pas de scroll ───────────────────────────────── */
+    .home-content {
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+    }
+
+    .home-materials {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Grille 6 images asymétriques — DESKTOP ────────────────────────── */
+    .home-materials__grid {
+      flex: 1 1 0;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      background: #FFFFFF;
+      padding: clamp(16px, 2.5vw, 28px);  /* Augmenté pour meilleure respiration */
+      gap: clamp(16px, 2.5vw, 28px);      /* Idem */
+    }
+
+    .home-materials__cell--tall {
+      grid-row: span 2;
+    }
+
+    .home-materials__cell--wide {
+      grid-row: span 2;
+    }
+
+    /* ── Cellule = lien cliquable ────────────────────────────────────────── */
+    .home-materials__cell {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .home-materials__cell--link {
+      position: relative;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .home-materials__cell--link:focus-visible {
+      outline: 2px solid #2A2926;
+      outline-offset: 2px;
+      z-index: 2;
+    }
+
+    /* ── Image ───────────────────────────────────────────────────────────── */
+    .home-materials__img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: saturate(0.9);
+      transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
+                  filter 600ms ease;
+      will-change: transform;
+    }
+
+    .home-materials__cell:hover .home-materials__img,
+    .home-materials__cell:focus-visible .home-materials__img {
+      transform: scale(1.015);
+      filter: saturate(1);
+    }
+
+    /* ── Overlay au survol — titre du projet ──────────────────────────── */
+    .home-materials__overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        rgba(30, 25, 20, 0.55) 0%,
+        rgba(30, 25, 20, 0.25) 40%,
+        transparent 100%
+      );
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      padding: clamp(12px, 2vw, 20px);
+      opacity: 0;
+      transition: opacity 400ms cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+    }
+
+    .home-materials__cell--link:hover .home-materials__overlay,
+    .home-materials__cell--link:focus-visible .home-materials__overlay {
+      opacity: 1;
+    }
+
+    .home-materials__overlay-content {
+      width: 100%;
+    }
+
+    .home-materials__project-title {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 0.8rem;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255, 252, 247, 0.96);
+      line-height: 1.2;
+      margin-bottom: 0.25em;
+    }
+
+    .home-materials__project-location {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 0.7rem;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255, 252, 247, 0.72);
+      line-height: 1;
+    }
+
+    /* ── Tablette : 2 colonnes ────────────────────────────────────────────── */
+    @media (min-width: 641px) and (max-width: 1023px) {
+      .home-materials__grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        padding: clamp(12px, 2.5vw, 20px);
+        gap: clamp(12px, 2.5vw, 20px);
+      }
+
+      .home-materials__cell--tall {
+        grid-row: span 1;  /* Annuler le span de 2 en desktop */
+      }
+
+      .home-materials__cell--wide {
+        grid-row: span 1;
+      }
+
+      /* Overlay visible au surplomb sur tablette (pas de hover) */
+      .home-materials__overlay {
+        opacity: 0.4;
+      }
+
+      .home-materials__cell--link:active .home-materials__overlay {
+        opacity: 1;
+      }
+    }
+
+    /* ── Mobile : empilement vertical ───────────────────────────────────── */
+    @media (max-width: 640px) {
+      .home-materials__grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(6, minmax(160px, 1fr));  /* 160px min, pas flexible */
+        padding: clamp(12px, 3vw, 16px);  /* Augmenté de 8px → 12px */
+        gap: clamp(12px, 3vw, 16px);      /* Idem */
+      }
+
+      .home-materials__cell--tall {
+        grid-row: span 1;
+      }
+
+      .home-materials__cell--wide {
+        grid-row: span 1;
+      }
+
+      /* Mobile : overlay toujours visible (visibilité) */
+      .home-materials__overlay {
+        opacity: 0.7;
+      }
+
+      /* Au tap/focus, plus opaque */
+      .home-materials__cell--link:active .home-materials__overlay,
+      .home-materials__cell--link:focus-visible .home-materials__overlay {
+        opacity: 1;
+      }
+    }
+
+    /* ── prefers-reduced-motion ────────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      .home-materials__img,
+      .home-materials__overlay {
+        transition: none !important;
+      }
+
+      .home-materials__cell:hover .home-materials__img,
+      .home-materials__cell:focus-visible .home-materials__img {
+        transform: none !important;
+        filter: saturate(0.9) !important;
+      }
+
+      /* Overlay reste visible sans animation */
+      .home-materials__cell--link:hover .home-materials__overlay,
+      .home-materials__cell--link:focus-visible .home-materials__overlay {
+        opacity: 0.7 !important;
+      }
+    }
+  </style>
+</MainLayout>
+
+<!--
+  ════════════════════════════════════════════════════════════════════════════
+  NOTES D'IMPLÉMENTATION
+  ════════════════════════════════════════════════════════════════════════════
+
+  1. SANITY IMAGES
+     - getAllProjects() charge depuis Sanity (ou fallback catalogue local)
+     - getPreviewImages() retourne les images marquées "isPreview" (max 3)
+     - resolveImageUrl(image, 1200) génère URL Sanity optimisée
+     - Format : AVIF prioritaire, WebP fallback
+
+  2. RESPONSIVE
+     - Desktop (1024px+) : 3 colonnes asymétriques (spans 2 lignes)
+     - Tablette (641px—1023px) : 2 colonnes régulières
+     - Mobile (≤640px) : 1 colonne, hauteur min 160px
+
+  3. ACCESSIBILITY
+     - Alt-text mandatory sur chaque image
+     - Liens cliquables avec title + aria-label
+     - Focus-visible custom (outline 2px)
+     - Overlay lisible (contraste blanc/fond assombri)
+     - prefers-reduced-motion respected
+
+  4. PERFORMANCE
+     - Index 0 → eager + high fetchpriority
+     - Index 1+ → lazy
+     - Image width/height définis (évite CLS)
+     - Padding/gap avec clamp() pour fluidité
+
+  5. EMAIL CONTACT
+     - Vérifier .env : CONTACT_EMAIL=marionderiot.archi@gmail.com
+     - Page /info → formulaire vers /api/contact
+     - Backend valide + rate limits obligatoires (CLAUDE.md)
+
+  ════════════════════════════════════════════════════════════════════════════
+-->

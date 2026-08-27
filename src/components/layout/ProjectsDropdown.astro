@@ -52,7 +52,7 @@ const initiallyOpen = true;
     id="projects-list"
     data-projects-list
     class:list={[
-      'projects-list mt-1 pl-3 space-y-1',
+      'projects-list mt-0.5 pl-3 space-y-0',
       !initiallyOpen && 'hidden',
     ]}
     role="list"
@@ -62,7 +62,7 @@ const initiallyOpen = true;
       <a
         href={getLangUrl(lang, '/projets')}
         class:list={[
-          'block py-0.5 text-xs font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide',
+          'block py-1 text-sm font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide',
           !currentSlug && isActive && 'text-anthracite-300',
         ]}
         aria-current={!currentSlug && isActive ? 'page' : undefined}
@@ -80,7 +80,7 @@ const initiallyOpen = true;
           <a
             href={getProjectUrl(lang, slug)}
             class:list={[
-              'block py-0.5 text-xs font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide uppercase',
+              'block py-1 text-sm font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide uppercase',
               isCurrent && 'text-anthracite-300',
             ]}
             aria-current={isCurrent ? 'page' : undefined}
@@ -96,7 +96,7 @@ const initiallyOpen = true;
 <style>
   /* ── Liste projets scrollable sans scrollbar visible ──────────────────── */
   .projects-list {
-    max-height: 34vh;
+    max-height: 54vh;
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;

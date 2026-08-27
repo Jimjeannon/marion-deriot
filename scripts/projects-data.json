@@ -1,0 +1,114 @@
+[
+  {
+    "name": "CAMBACÉRÈS",
+    "location": "Paris",
+    "postalCode": "75008",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "90m2",
+    "slug": "cambaceres"
+  },
+  {
+    "name": "VAUCRESSON",
+    "location": "Vaucresson",
+    "postalCode": "",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "220m2",
+    "slug": "vaucresson"
+  },
+  {
+    "name": "BOURDONNAIS",
+    "location": "Paris",
+    "postalCode": "75007",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "115m2",
+    "slug": "bourdonnais"
+  },
+  {
+    "name": "LAVOISIER",
+    "location": "Paris",
+    "postalCode": "75007",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "duplex 125m2",
+    "slug": "lavoisier"
+  },
+  {
+    "name": "HERVIEU",
+    "location": "Paris",
+    "postalCode": "75015",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "115m2",
+    "slug": "hervieu"
+  },
+  {
+    "name": "SQUARE DE VALOIS CHESNEY",
+    "location": "",
+    "postalCode": "",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "165m2",
+    "slug": "square-de-valois-chesney"
+  },
+  {
+    "name": "SQUARE DU ROULE NEUILLY",
+    "location": "Neuilly",
+    "postalCode": "",
+    "clientType": "rénovation complète d'un hôtel particulier",
+    "surface": "300m2",
+    "slug": "square-du-roule-neuilly"
+  },
+  {
+    "name": "CDG BOULOGNE BILLANCOURT",
+    "location": "Boulogne-Billancourt",
+    "postalCode": "",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "115m2",
+    "slug": "cdg-boulogne-billancourt"
+  },
+  {
+    "name": "MIGNET",
+    "location": "Paris",
+    "postalCode": "75016",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "duplex 220m2",
+    "slug": "mignet"
+  },
+  {
+    "name": "BRETEUIL",
+    "location": "",
+    "postalCode": "",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "180m2",
+    "slug": "breteuil"
+  },
+  {
+    "name": "VERTBOIS",
+    "location": "",
+    "postalCode": "",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "80m2",
+    "slug": "vertbois"
+  },
+  {
+    "name": "MALAKOFF",
+    "location": "Paris",
+    "postalCode": "75016",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "150m2",
+    "slug": "malakoff"
+  },
+  {
+    "name": "ALBONI",
+    "location": "Paris",
+    "postalCode": "75016",
+    "clientType": "maîtrise d'ouvrage privée",
+    "surface": "140m2",
+    "slug": "alboni"
+  },
+  {
+    "name": "FLACHAT",
+    "location": "",
+    "postalCode": "",
+    "clientType": "extension d'une maison",
+    "surface": "",
+    "slug": "flachat"
+  }
+]

@@ -11,21 +11,17 @@
  */
 import MainLayout from '@/layouts/MainLayout.astro';
 import ProjectGallery from '@/components/sections/ProjectGallery.astro';
-import { getAllProjects, getLocalized } from '@/lib/projects';
+import { getProjectBySlug, getLocalized } from '@/lib/projects';
 
-export async function getStaticPaths() {
-  const projects = await getAllProjects();
-  return projects.map((project) => ({
-    params: { slug: project.slug.fr.current },
-    props: { project },
-  }));
+// SSR : rendu a la demande -> un projet cree via /admin apparait immediatement, sans rebuild.
+export const prerender = false;
+
+const { slug } = Astro.params;
+const project = slug ? await getProjectBySlug(slug, 'fr') : null;
+if (!project) {
+  return Astro.redirect('/projets', 302);
 }
 
-interface Props {
-  project: import('@/lib/projects').SiteProject;
-}
-
-const { project } = Astro.props;
 const pageTitle = project.seo?.title?.fr ?? `${project.title.fr} — Marion Dériot`;
 const pageDescription = project.seo?.description?.fr ?? getLocalized(project.description, 'fr');
 ---

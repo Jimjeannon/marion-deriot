@@ -20,15 +20,25 @@ export const fr = {
   landing: {
     enter: 'Entrer',
     enterLabel: 'Entrer dans le site',
-    tagline: 'Architecte d\'intérieur',
+    tagline: 'Architecture intérieure & Design',
     studio: 'Agence Marion Dériot',
   },
 
   // ─── Homepage ────────────────────────────────────────────────────────────
   home: {
-    title: 'Marion Dériot — Architecte d\'intérieur',
+    /** Titre de la landing (/) — distinct de la home pour éviter les titres dupliqués. */
+    title: 'Marion Dériot — Architecte d\'intérieur & Design',
+    /** Titre de la home (/home) — 57 caractères, cible SEO locale. */
+    metaTitle: 'Architecte d\'intérieur à Paris & Boulogne — Marion Dériot',
+    /** 154 caractères — dans la fenêtre 150-160 recommandée. */
     metaDescription:
-      'Agence Marion Dériot, architecte d\'intérieur à Boulogne-Billancourt. Projets résidentiels et professionnels sur mesure à Paris et en Île-de-France.',
+      'Marion Dériot, architecte d\'intérieur diplômée de l\'École Camondo. Rénovation et agencements sur mesure à Paris, Boulogne-Billancourt et en Île-de-France.',
+    /** h1 de la home — lu par les lecteurs d'écran, non affiché. */
+    h1: 'Marion Dériot, architecte d\'intérieur à Paris et Boulogne-Billancourt',
+    /** Libellé du diaporama pour les technologies d'assistance. */
+    slideshowLabel: 'Réalisations — matières et atmosphères',
+    /** Lien de repli quand l'image ne renvoie pas vers une fiche projet. */
+    seeAllProjects: 'Découvrir les projets',
     intro: '',
   },
 
@@ -37,7 +47,7 @@ export const fr = {
     title: 'Projets',
     metaTitle: 'Projets — Marion Dériot Architecte d\'intérieur',
     metaDescription:
-      'Découvrez les projets d\'architecture intérieure et de design de l\'agence Marion Dériot à Boulogne-Billancourt — résidentiel, commercial, hôtelier.',
+      'Projets de rénovation sur mesure, menuiseries sur mesure et aménagement intérieur — Agence Marion Dériot, architecte d\'intérieur diplômée Camondo, Paris et Île-de-France.',
     viewProject: 'Voir le projet',
     openSlideshow: 'Ouvrir le diaporama',
     closeSlideshow: 'Fermer le diaporama',
@@ -53,7 +63,7 @@ export const fr = {
     title: 'Info',
     metaTitle: 'Info & Contact — Marion Dériot Architecte d\'intérieur',
     metaDescription:
-      'Présentation de l\'agence Marion Dériot, architecte d\'intérieur diplômée de l\'École Camondo. Contact, adresse studio Boulogne-Billancourt.',
+      'Marion Renaudin Dériot, architecte d\'intérieur et designer diplômée de l\'École Camondo. Rénovation sur mesure, menuiseries sur mesure, 25 ans d\'expérience. Contact à Boulogne-Billancourt.',
     contactTitle: 'Contact',
     form: {
       name: 'Nom',

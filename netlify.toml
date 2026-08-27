@@ -1,0 +1,33 @@
+# Configuration Netlify — Marion Dériot
+# Fichier checké dans le repo, prend le pas sur les settings du dashboard.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Node 20 LTS — requis par @astrojs/netlify v5+
+  NODE_VERSION = "20"
+  # Évite le mode strict sur les peer deps qui bloquerait l'install
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Headers de sécurité (cohérents avec vercel.json)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Admin Sanity — pas d'indexation
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
+# Cache long pour les assets immuables Astro
+[[headers]]
+  for = "/_astro/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

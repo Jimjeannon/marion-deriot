@@ -79,6 +79,12 @@ export interface SanityProject {
   slug: { fr: { current: string }; en: { current: string } };
   category: 'residential' | 'commercial' | 'hospitality' | 'other';
   year?: number;
+  /** Lieu saisi dans l'admin (ex : "Paris 8ᵉ") */
+  location?: string;
+  /** Surface saisie dans l'admin (ex : "90 m²") */
+  surface?: string;
+  /** Maîtrise d'ouvrage saisie dans l'admin (ex : "maîtrise d'ouvrage privée") */
+  clientType?: string;
   gallery: SanityImage[];
   seo?: {
     title?: { fr: string; en: string };
@@ -95,6 +101,9 @@ const PROJECT_FIELDS = `
   slug,
   category,
   year,
+  location,
+  surface,
+  clientType,
   "gallery": gallery[] {
     _type,
     asset,
@@ -107,12 +116,13 @@ const PROJECT_FIELDS = `
 `;
 
 /**
- * Récupère tous les projets publiés, triés par année décroissante.
+ * Récupère tous les projets publiés, du plus récemment créé au plus ancien.
+ * L'ordre de création permet d'afficher en tête les projets ajoutés via l'admin.
  */
 export async function getAllProjects(): Promise<SanityProject[]> {
   if (!isSanityConfigured()) return [];
   return getSanityClient().fetch(
-    `*[_type == "project"] | order(year desc) { ${PROJECT_FIELDS} }`
+    `*[_type == "project"] | order(_createdAt desc) { ${PROJECT_FIELDS} }`
   );
 }
 
@@ -145,19 +155,22 @@ export function getPreviewImages(project: SanityProject): SanityImage[] {
  *
  * Paramètre `width` : largeur cible en pixels pour la transformation Sanity
  * (ignoré pour les sources locales — l'image est servie telle quelle).
+ * Paramètre `height` : si fourni avec `width`, recadre au format demandé
+ * (fit crop) en respectant le hotspot défini dans Sanity Studio.
  */
 export function resolveImageUrl(
   image: SanityImage | undefined | null,
-  width?: number
+  width?: number,
+  height?: number
 ): string | null {
   if (!image) return null;
   if (image.src) return image.src;
   if (image.asset && isSanityConfigured()) {
     try {
-      const builder = urlFor(image);
-      return width
-        ? builder.width(width).auto('format').url()
-        : builder.auto('format').url();
+      let builder = urlFor(image);
+      if (width) builder = builder.width(width);
+      if (width && height) builder = builder.height(height).fit('crop');
+      return builder.auto('format').url();
     } catch {
       return null;
     }

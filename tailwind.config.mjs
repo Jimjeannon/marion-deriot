@@ -1,4 +1,6 @@
 // @ts-check
+// import typography from '@tailwindcss/typography';  // TODO: debug "require is not defined" error
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
@@ -69,8 +71,8 @@ export default {
       // ─── Espacement ───────────────────────────────────────────────────────
       // Généreux — espace blanc, marges franches
       spacing: {
-        'sidebar': '240px',
-        'sidebar-sm': '220px',
+        'sidebar': '240px', // largeur validée par la cliente (juin 2026)
+        'sidebar-sm': '190px',
       },
 
       // ─── Easings personnalisés ────────────────────────────────────────────
@@ -102,6 +104,6 @@ export default {
     },
   },
   plugins: [
-    require('@tailwindcss/typography'),
+    // typography,  // TODO: debug "require is not defined" error
   ],
 };

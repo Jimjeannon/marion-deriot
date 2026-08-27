@@ -48,34 +48,35 @@ export const PATCH: APIRoute = async ({ cookies, request, params }) => {
     const patch: Record<string, unknown> = {};
 
     if (body.title) {
-      const t = body.title as { fr?: string; en?: string };
+      const t = body.title as { fr?: string };
       patch.title = t;
-      // Régénérer le slug à chaque renommage
+      // Régénérer le slug à chaque renommage (FR uniquement)
       patch.slug = {
         fr: { _type: 'slug', current: t.fr ? slugify(t.fr) : '' },
-        en: { _type: 'slug', current: t.en ? slugify(t.en) : '' },
       };
     }
 
     if (body.category) patch.category = body.category;
     // year peut être null (suppression)
     if ('year' in body) patch.year = body.year ?? null;
+    // Champs descriptifs — chaîne vide = suppression (null)
+    if ('location' in body) patch.location = (body.location as string)?.trim() || null;
+    if ('surface' in body) patch.surface = (body.surface as string)?.trim() || null;
+    if ('clientType' in body) patch.clientType = (body.clientType as string)?.trim() || null;
 
     const result = await getSanityWriteClient().patch(id).set(patch).commit();
 
     // ✨ Revalidation — invalider les pages projets après modification métadonnées
     if (typeof request.headers.get === 'function') {
       try {
-        const projectData = result as { slug?: { fr?: { current?: string }; en?: { current?: string } } };
+        const projectData = result as { slug?: { fr?: { current?: string } } };
         const slugFr = projectData?.slug?.fr?.current;
-        const slugEn = projectData?.slug?.en?.current;
 
-        if (slugFr || slugEn) {
+        if (slugFr) {
           const revalidatePaths = [];
-          if (slugFr) revalidatePaths.push(`/projets/${slugFr}`);
-          if (slugEn) revalidatePaths.push(`/en/projects/${slugEn}`);
-          // Invalider aussi la liste des projets
-          revalidatePaths.push('/projets', '/en/projects');
+          revalidatePaths.push(`/projets/${slugFr}`);
+          // Invalider aussi la liste des projets (FR uniquement)
+          revalidatePaths.push('/projets');
 
           for (const path of revalidatePaths) {
             try {
@@ -109,22 +110,20 @@ export const DELETE: APIRoute = async ({ cookies, request, params }) => {
     const project = await client.fetch(
       `*[_type == "project" && _id == $id][0] { slug }`,
       { id }
-    ) as { slug?: { fr?: { current?: string }; en?: { current?: string } } } | null;
+    ) as { slug?: { fr?: { current?: string } } } | null;
 
     // Supprimer le projet
     await client.delete(id);
 
-    // ✨ Revalidation — invalider les pages après suppression
+    // ✨ Revalidation — invalider les pages après suppression (FR uniquement)
     if (project && typeof request.headers.get === 'function') {
       try {
         const slugFr = project?.slug?.fr?.current;
-        const slugEn = project?.slug?.en?.current;
 
         const revalidatePaths = [];
         if (slugFr) revalidatePaths.push(`/projets/${slugFr}`);
-        if (slugEn) revalidatePaths.push(`/en/projects/${slugEn}`);
-        // Toujours invalider les listes
-        revalidatePaths.push('/projets', '/en/projects', '/projets/index', '/en/projects/index');
+        // Toujours invalider les listes (FR uniquement)
+        revalidatePaths.push('/projets');
 
         for (const path of revalidatePaths) {
           try {

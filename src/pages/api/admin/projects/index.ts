@@ -45,7 +45,14 @@ export const GET: APIRoute = async ({ cookies }) => {
 export const POST: APIRoute = async ({ cookies, request }) => {
   if (!isAuthorized(cookies)) return json({ error: 'Non autorise' }, 401);
 
-  let body: { title?: { fr?: string; en?: string }; category?: string; year?: number };
+  let body: {
+    title?: { fr?: string; en?: string };
+    category?: string;
+    year?: number;
+    location?: string;
+    surface?: string;
+    clientType?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -67,6 +74,9 @@ export const POST: APIRoute = async ({ cookies, request }) => {
 
   const extra: Record<string, unknown> = {};
   if (body.year) extra.year = body.year;
+  if (body.location?.trim()) extra.location = body.location.trim();
+  if (body.surface?.trim()) extra.surface = body.surface.trim();
+  if (body.clientType?.trim()) extra.clientType = body.clientType.trim();
 
   try {
     const client = getSanityWriteClient();

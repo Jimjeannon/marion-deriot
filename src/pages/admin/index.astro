@@ -512,37 +512,68 @@ const sanityReady = isSanityWriteConfigured();
 
     .project-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
       gap: 1.5rem;
     }
 
     @media (min-width: 768px) {
       .project-grid {
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        gap: 2rem;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.75rem;
       }
     }
 
+    /* Carte projet — cadran net, bien dissocie */
     .project-card {
+      position: relative;
       background: white;
       border: 1px solid var(--color-greige-100);
       border-radius: var(--radius-lg);
       overflow: hidden;
-      transition: all 200ms;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+      transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+                  box-shadow 220ms ease, border-color 220ms ease;
+    }
+
+    .project-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--color-accent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+      z-index: 2;
     }
 
     .project-card:hover {
-      border-color: var(--color-accent);
-      box-shadow: var(--shadow-md);
+      border-color: var(--color-greige-200);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-3px);
+    }
+
+    .project-card:hover::before {
+      transform: scaleX(1);
     }
 
     .card-thumbs {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 1px;
+      gap: 2px;
       background: var(--color-greige-100);
-      height: 140px;
+      height: 180px;
       overflow: hidden;
+    }
+
+    @media (min-width: 768px) {
+      .card-thumbs {
+        height: 196px;
+      }
     }
 
     .card-thumbs.one {
@@ -555,6 +586,7 @@ const sanityReady = isSanityWriteConfigured();
 
     .ct {
       overflow: hidden;
+      min-width: 0;
       background: var(--color-ivory);
     }
 
@@ -563,6 +595,11 @@ const sanityReady = isSanityWriteConfigured();
       height: 100%;
       object-fit: cover;
       display: block;
+      transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .project-card:hover .ct img {
+      transform: scale(1.04);
     }
 
     .ct-empty {
@@ -576,44 +613,55 @@ const sanityReady = isSanityWriteConfigured();
     }
 
     .card-body {
-      padding: 1rem;
-    }
-
-    @media (min-width: 480px) {
-      .card-body {
-        padding: 1.2rem;
-      }
+      padding: 1.1rem 1.2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
     }
 
     .card-title {
-      font-family: var(--font-serif);
-      font-size: 0.9rem;
-      font-weight: 400;
-      letter-spacing: -0.01em;
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       color: var(--color-anthracite);
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.6rem;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .card-meta {
-      font-size: 0.75rem;
-      color: var(--color-greige-400);
-      margin-bottom: 1rem;
+      align-self: flex-start;
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--color-accent);
+      background: rgba(139, 115, 85, 0.08);
+      padding: 0.22rem 0.55rem;
+      border-radius: 999px;
+      margin-bottom: 1.1rem;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .card-actions {
       display: flex;
       gap: 0.4rem;
       justify-content: flex-end;
+      margin-top: auto;
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--color-greige-100);
     }
 
     .card-act {
       background: none;
       border: 1px solid var(--color-greige-200);
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: var(--radius);
       display: inline-flex;
       align-items: center;
@@ -667,6 +715,19 @@ const sanityReady = isSanityWriteConfigured();
       opacity: 1;
       pointer-events: all;
     }
+
+    /* Securite : la modale reste dans le viewport, jamais de debordement */
+    .modal {
+      min-width: 0;
+      margin: 0 auto;
+    }
+    @media (min-width: 768px) {
+      .modal {
+        max-width: min(760px, calc(100vw - 2rem));
+      }
+    }
+    .modal-body { min-width: 0; overflow-x: hidden; }
+
 
     .modal {
       background: white;
@@ -791,133 +852,189 @@ const sanityReady = isSanityWriteConfigured();
     /* GALLERY & UPLOAD                                                         */
     /* ═══════════════════════════════════════════════════════════════════════ */
 
+    /* ── Cartes images — image ENTIÈRE, infos lisibles, actions visibles ── */
     .gallery-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 0.8rem;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 1rem;
       margin-bottom: 1rem;
-      padding: 0.2rem;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     @media (max-width: 480px) {
       .gallery-grid {
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-        gap: 0.6rem;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.75rem;
       }
     }
 
-    .gimg {
+    .gcard {
       position: relative;
-      aspect-ratio: 1 / 1;
-      width: 100%;
-      height: auto;
-      border: 2px solid var(--color-greige-200);
-      border-radius: var(--radius);
+      border: 1px solid var(--color-greige-100);
+      border-radius: var(--radius-lg);
       overflow: hidden;
-      background: var(--color-ivory);
+      background: white;
       cursor: grab;
       user-select: none;
-      transition: all 180ms;
-      display: block;
-      min-height: 80px;
+      transition: border-color 180ms, box-shadow 180ms, opacity 180ms;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      box-shadow: var(--shadow-sm);
     }
 
-    .gimg:active {
-      cursor: grabbing;
+    .gcard:active { cursor: grabbing; }
+
+    .gcard:hover {
+      border-color: var(--color-greige-200);
+      box-shadow: var(--shadow-md);
     }
 
-    .gimg.preview-on {
+    .gcard.preview-on {
       border-color: var(--color-accent);
-      border-width: 3px;
+      box-shadow: 0 0 0 1px var(--color-accent), var(--shadow-sm);
     }
 
-    .gimg.drag-over {
-      border-color: var(--color-accent);
+    .gcard.drag-over {
       border-style: dashed;
-      background: rgba(139, 115, 85, 0.08);
+      border-color: var(--color-accent);
     }
 
-    .gimg.dragging {
+    .gcard.dragging {
       opacity: 0.35;
       z-index: 10;
     }
 
-    .gimg img {
+    /* Zone image — proportion fixe, image entière (jamais rognée) */
+    .gcard-img {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      background: var(--color-ivory-subtle);
+      overflow: hidden;
+    }
+
+    .gcard-img img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
       pointer-events: none;
     }
 
-    .gimg-upload-wrapper {
+    /* Étiquette Preview — coin haut gauche */
+    .gcard-flag {
       position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: rgba(44, 43, 41, 0.6);
-      gap: 0.5rem;
+      top: 8px;
+      left: 8px;
+      padding: 0.2rem 0.5rem;
+      background: var(--color-accent);
+      color: white;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      pointer-events: none;
+      line-height: 1.2;
+      z-index: 2;
     }
 
-    .gimg-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      padding: 0.4rem;
-      gap: 0.3rem;
-      background: transparent;
-      transition: background 180ms;
-    }
-
-    .gimg:hover .gimg-overlay {
-      background: rgba(44, 43, 41, 0.35);
-    }
-
-    .gimg-btn {
-      background: rgba(255, 255, 255, 0.95);
-      border: none;
-      width: 28px;
-      height: 28px;
-      border-radius: 4px;
+    /* Barre d'infos + actions — toujours visible, rien au survol */
+    .gcard-bar {
       display: flex;
       align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      opacity: 0;
-      transition: all 140ms;
-      flex-shrink: 0;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    .gimg:hover .gimg-btn {
-      opacity: 1;
-    }
-
-    .gimg-btn:hover {
+      gap: 0.45rem;
+      padding: 0.45rem 0.55rem;
+      border-top: 1px solid var(--color-greige-100);
       background: white;
-      transform: scale(1.08);
+      min-width: 0;
     }
 
-    .gimg-btn[data-action="move"] {
+    .gcard-num {
+      min-width: 22px;
+      height: 22px;
+      padding: 0 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-ivory);
+      border: 1px solid var(--color-greige-100);
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--color-anthracite);
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .gcard.preview-on .gcard-num {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: white;
+    }
+
+    .gcard-name {
+      flex: 1;
+      min-width: 0;
+      font-size: 10.5px;
       color: var(--color-greige-400);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .gimg-btn[data-action="move"]:hover {
+    .gcard-actions {
+      display: flex;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+
+    .gcard-act {
+      background: transparent;
+      border: none;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+      cursor: pointer;
+      color: var(--color-greige-400);
+      transition: all 140ms;
+    }
+
+    .gcard-act svg { display: block; margin: auto; }
+
+    .gcard-act:hover:not(:disabled) {
       color: var(--color-accent);
       background: rgba(139, 115, 85, 0.1);
     }
 
-    .gimg-btn[data-action="del"] {
-      color: var(--color-greige-400);
-    }
-
-    .gimg-btn[data-action="del"]:hover {
+    .gcard-act[data-action="del"]:hover:not(:disabled) {
       color: var(--color-danger);
       background: rgba(176, 48, 48, 0.08);
+    }
+
+    .gcard-act:disabled {
+      opacity: 0.25;
+      cursor: default;
+    }
+
+    /* Carte en cours d'upload */
+    .gcard-upload-wrapper {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(44, 43, 41, 0.55);
+      gap: 0.5rem;
+      z-index: 2;
     }
 
     .upload-zone {
@@ -1092,6 +1209,9 @@ const sanityReady = isSanityWriteConfigured();
       margin-bottom: 0.5rem;
     }
   </style>
+
+  <!-- Styles de l'éditeur (modal plein écran + cartes images) — chargés en DERNIER, priment sur le <style> ci-dessus -->
+  <link rel="stylesheet" href="/admin-ui.css?v=20260612c" />
 </head>
 
 <body data-auth={String(isAuthenticated)} data-sanity={String(sanityReady)}>
@@ -1151,7 +1271,7 @@ const sanityReady = isSanityWriteConfigured();
     <main class="admin-main">
       <div class="section-hd">
         <h1 class="section-title">Projets</h1>
-        <span id="project-count" style="font-size:0.8rem;color:var(--color-greige-400);font-weight:500;letter-spacing:0.08em;white-space:nowrap;flex-shrink:0"></span>
+        <span id="project-count" style="font-size:0.72rem;color:var(--color-accent);background:rgba(139,115,85,0.08);font-weight:600;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;padding:0.35rem 0.75rem;border-radius:999px"></span>
       </div>
 
       <!-- Notice Sanity -->
@@ -1189,38 +1309,28 @@ const sanityReady = isSanityWriteConfigured();
           <button class="modal-close" id="modal-close" aria-label="Fermer">✕</button>
         </div>
         <div class="modal-body">
-          <div class="form-grid-2" style="margin-bottom:1.5rem">
-            <div>
-              <label class="form-label" for="f-title-fr">Titre FR</label>
-              <input class="form-input" id="f-title-fr" type="text" placeholder="Ex: BELLEVILLE" style="text-transform:uppercase" />
-            </div>
-            <div>
-              <label class="form-label" for="f-title-en">Titre EN</label>
-              <input class="form-input" id="f-title-en" type="text" placeholder="Ex: BELLEVILLE" style="text-transform:uppercase" />
-            </div>
+          <div style="margin-bottom:1.5rem">
+            <label class="form-label" for="f-title-fr">Titre du projet</label>
+            <input class="form-input" id="f-title-fr" type="text" placeholder="Ex: BELLEVILLE" style="text-transform:uppercase" />
+            <input type="hidden" id="f-title-en" />
           </div>
 
-          <div class="form-grid-3" style="margin-bottom:2rem">
+          <div class="form-grid-2" style="margin-bottom:2rem">
             <div>
-              <label class="form-label" for="f-category">Catégorie</label>
-              <select class="form-select" id="f-category">
-                <option value="residential">Résidentiel</option>
-                <option value="commercial">Commercial</option>
-                <option value="hospitality">Hôtelier</option>
-                <option value="other">Autre</option>
-              </select>
+              <label class="form-label" for="f-location">Lieu</label>
+              <input class="form-input" id="f-location" type="text" placeholder="Ex : Paris 8ᵉ, Vaucresson" />
             </div>
             <div>
-              <label class="form-label" for="f-year">Année</label>
-              <input class="form-input" id="f-year" type="number" placeholder="2024" min="1990" max="2099" />
+              <label class="form-label" for="f-surface">Superficie</label>
+              <input class="form-input" id="f-surface" type="text" placeholder="Ex : 90 m², duplex 125 m²" />
             </div>
           </div>
 
           <!-- Preview images section -->
           <div style="margin-bottom:1.5rem">
             <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:0.6rem">
-              <p class="modal-sec-title">Images de preview (2–3)</p>
-              <span id="preview-count-badge" style="font-size:0.85rem;font-weight:600;color:var(--color-greige-400)">0 / 3</span>
+              <p class="modal-sec-title">Images de preview (max 2)</p>
+              <span id="preview-count-badge" style="font-size:0.85rem;font-weight:600;color:var(--color-greige-400)">0 / 2</span>
             </div>
             <p style="font-size:0.8rem;color:var(--color-greige-400);margin-bottom:1rem;line-height:1.5">Affichées sur la liste des projets et en haut de la page projet.</p>
             <div class="gallery-grid" id="gallery-preview"></div>
@@ -1240,7 +1350,7 @@ const sanityReady = isSanityWriteConfigured();
           <!-- Gallery section -->
           <div>
             <p class="modal-sec-title" style="margin-bottom:0.6rem">Galerie complète (diaporama)</p>
-            <p style="font-size:0.8rem;color:var(--color-greige-400);margin-bottom:1rem;line-height:1.5">Toutes les images du diaporama plein écran. Glisser pour réordonner.</p>
+            <p style="font-size:0.8rem;color:var(--color-greige-400);margin-bottom:1rem;line-height:1.5">Les numéros indiquent l'ordre d'affichage sur le site. Glisser-déposer pour réordonner.</p>
             <div class="gallery-grid" id="gallery-all"></div>
             <div class="upload-zone" id="upload-zone-gallery">
               <input type="file" id="upload-input-gallery" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
@@ -1266,6 +1376,6 @@ const sanityReady = isSanityWriteConfigured();
   </div>
 
   <!-- Script principal — MÊME LOGIQUE QUE AVANT, JUSTE TOKENS MISES À JOUR -->
-  <script src="/admin-script.js" defer></script>
+  <script src="/admin-script.js?v=20260612b" defer></script>
 </body>
 </html>

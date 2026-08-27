@@ -26,9 +26,12 @@ export interface SiteProject {
   surface?: string;
   location?: LocalizedString;
   description: LocalizedString;
+  /** Courte mention affichée sur les cards et la page projet, ex. "Maîtrise d'ouvrage privée" */
+  brief?: string;
   year?: number;
   imageCount?: number;
   gallery: SanityImage[];
+  photographer?: string;
   seo?: SanityProject['seo'];
 }
 
@@ -36,16 +39,50 @@ function isSanityProject(project: SanityProject | SiteProject): project is Sanit
   return '_id' in project;
 }
 
+/**
+ * Ordre éditorial de référence, défini par l'ordre du catalogue local
+ * (PROJECTS_CATALOG). Sanity ne garantit pas d'ordre stable (la plupart des
+ * projets n'ont pas d'année), on force donc l'ordre voulu par la cliente.
+ * Les projets absents du catalogue sont renvoyés en fin de liste.
+ */
+const CATALOG_ORDER = new Map(
+  PROJECTS_CATALOG.map((p, index) => [p.slug.fr.current, index])
+);
+
+/**
+ * Documents Sanity parasites (doublons / tests) à ne jamais afficher publiquement.
+ * À retirer d'ici si les documents sont supprimés dans /admin.
+ */
+const EXCLUDED_SLUGS = new Set(['folie-mericourt', 'cdg-charles-de-gaulle']);
+
+function catalogRank(project: SiteProject): number {
+  const rank = CATALOG_ORDER.get(project.slug.fr.current);
+  return rank === undefined ? Number.MAX_SAFE_INTEGER : rank;
+}
+
+function sortByCatalogOrder(projects: SiteProject[]): SiteProject[] {
+  return [...projects].sort((a, b) => catalogRank(a) - catalogRank(b));
+}
+
 /** Fusionne un document Sanity avec les métadonnées du catalogue local (surface, lieu, descriptif). */
 function mergeWithCatalog(sanityProject: SanityProject): SiteProject {
   const slugFr = sanityProject.slug.fr.current;
   const local = PROJECTS_CATALOG.find((p) => p.slug.fr.current === slugFr);
+
+  // Les champs saisis dans l'admin (Sanity) priment sur le catalogue local.
+  const sanityLocation = sanityProject.location
+    ? { fr: sanityProject.location, en: sanityProject.location }
+    : undefined;
+
   if (!local) {
     return {
       id: sanityProject._id,
       title: sanityProject.title,
       slug: sanityProject.slug,
       category: sanityProject.category,
+      surface: sanityProject.surface,
+      location: sanityLocation,
+      brief: sanityProject.clientType,
       description: {
         fr: sanityProject.seo?.description?.fr ?? '',
         en: sanityProject.seo?.description?.en ?? '',
@@ -60,6 +97,9 @@ function mergeWithCatalog(sanityProject: SanityProject): SiteProject {
     title: sanityProject.title,
     slug: sanityProject.slug,
     category: sanityProject.category,
+    surface: sanityProject.surface ?? local.surface,
+    location: sanityLocation ?? local.location,
+    brief: sanityProject.clientType ?? local.brief,
     year: sanityProject.year ?? local.year,
     gallery: sanityProject.gallery ?? [],
     seo: sanityProject.seo,
@@ -69,16 +109,29 @@ function mergeWithCatalog(sanityProject: SanityProject): SiteProject {
 export async function getAllProjects(): Promise<SiteProject[]> {
   if (isSanityConfigured()) {
     try {
-      const sanityProjects = await getSanityProjects();
+      // Sanity renvoie les projets du plus récent au plus ancien (order _createdAt desc).
+      // On écarte les documents parasites connus (doublons / tests).
+      const sanityProjects = (await getSanityProjects()).filter(
+        (p) => !EXCLUDED_SLUGS.has(p.slug.fr.current)
+      );
+
       const siteProjects = sanityProjects.map(mergeWithCatalog);
 
-      // Inclure aussi les projets du catalogue local pas encore migrés vers Sanity
+      // Projets Sanity ajoutés via l'admin (absents du catalogue) : affichés EN TÊTE,
+      // du plus récent au plus ancien (ordre déjà fourni par la requête Sanity).
+      const newFromAdmin = siteProjects.filter(
+        (p) => !CATALOG_ORDER.has(p.slug.fr.current)
+      );
+
+      // Projets du catalogue (via Sanity ou locaux) : conservés dans l'ordre éditorial.
+      const inCatalog = siteProjects.filter((p) => CATALOG_ORDER.has(p.slug.fr.current));
       const sanitySlugsFr = new Set(sanityProjects.map((p) => p.slug.fr.current));
       const catalogOnly = PROJECTS_CATALOG.filter(
         (p) => !sanitySlugsFr.has(p.slug.fr.current)
       );
+      const catalogSorted = sortByCatalogOrder([...inCatalog, ...catalogOnly]);
 
-      return [...siteProjects, ...catalogOnly];
+      return [...newFromAdmin, ...catalogSorted];
     } catch {
       /* fallback catalogue local */
     }
@@ -119,9 +172,9 @@ export function getLocalized<T extends LocalizedString>(
 
 export function getProjectMetaLine(project: SiteProject, lang: Locale): string | null {
   const parts: string[] = [];
-  if (project.surface) parts.push(project.surface);
   const location = getLocalized(project.location, lang);
   if (location) parts.push(location);
+  if (project.surface) parts.push(project.surface);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 

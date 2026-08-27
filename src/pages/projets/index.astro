@@ -7,6 +7,9 @@ import ProjectList from '@/components/sections/ProjectList.astro';
 import { getDict } from '@/i18n';
 import { getAllProjects } from '@/lib/projects';
 
+// SSR : la liste reflete immediatement les projets ajoutes via /admin.
+export const prerender = false;
+
 const t = getDict('fr');
 const projects = await getAllProjects();
 ---
@@ -26,8 +29,8 @@ const projects = await getAllProjects();
     ],
   })} />
 
-  <div class="px-10 py-16 lg:px-16">
-    <h1 class="font-serif text-4xl font-light text-anthracite-300 mb-16 tracking-wide">
+  <div class="px-10 pt-6 pb-12 lg:px-16 lg:pt-8">
+    <h1 class="font-serif text-3xl font-semibold text-anthracite-300 mb-6 tracking-wide">
       {t.projects.title}
     </h1>
 

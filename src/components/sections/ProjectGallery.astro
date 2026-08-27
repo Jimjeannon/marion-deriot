@@ -1,27 +1,20 @@
 ---
 /**
- * Galerie projet — page projet plein écran (pas de scroll) + diaporama immersif.
+ * Galerie projet — navigation au clic, double cadrant plein écran.
  *
- * Page projet
- *  - Hauteur = 100dvh, layout flex colonne, jamais de scroll
- *  - Titre large posé en haut, généreux
- *  - 2 images de preview côte à côte qui remplissent la hauteur restante
- *  - Images visibles entièrement (object-fit: contain) : pas de crop
- *
- * Diaporama
- *  - Vrai plein écran, fond doux warm off-white assorti au site (≠ pur noir)
- *  - Images centrées, max-w / max-h 96vw / 92dvh, jamais de crop
- *  - UI minimaliste (compteur + fermer + flèches), auto-hide après 2,5 s
- *  - Crossfade directionnel : l'image entrante glisse légèrement depuis le
- *    côté de la navigation, l'image sortante s'efface vers l'opposé
- *  - Swipe / drag : suivi du doigt en temps réel, snap au seuil
- *  - Préchargement n-1 / n / n+1
- *  - A11y complète, prefers-reduced-motion
+ * Design v5 (juin 2026) — demande cliente : plus de scroll, navigation au clic.
+ *  - UN cadre blanc par paire (double cadrant), une paire visible à la fois
+ *  - Transition : crossfade doux entre les paires (cohérent avec le diaporama home)
+ *  - Clic sur la moitié droite de l'image → paire suivante ; moitié gauche → précédente
+ *    (curseurs flèche sur mesure, zones annoncées aux lecteurs d'écran)
+ *  - Flèches ‹ › + compteur en bas à droite, clavier (← → ↑ ↓), swipe mobile
+ *  - Header fixe : titre + localisation + surface
+ *  - prefers-reduced-motion : transitions instantanées
  */
 import type { SiteProject } from '@/lib/projects';
 import type { Locale } from '@/i18n';
 import { getDict } from '@/i18n';
-import { getLocalized, getPreviewImages } from '@/lib/projects';
+import { getLocalized } from '@/lib/projects';
 import { resolveImageUrl, type SanityImage } from '@/lib/sanity';
 
 interface Props {
@@ -36,67 +29,24 @@ const allImages: SanityImage[] = project.gallery ?? [];
 const hasGallery = allImages.length > 0;
 const title = getLocalized(project.title, lang);
 
-// Toujours exactement 2 images en preview — compléter avec la galerie si besoin
-const rawPreview = getPreviewImages(project).slice(0, 2);
-const previewImages: SanityImage[] = (() => {
-  if (rawPreview.length >= 2) return rawPreview.slice(0, 2);
-  // Compléter avec des images de la galerie non déjà incluses
-  const extras = allImages.filter((img) => !rawPreview.includes(img));
-  const padded = [...rawPreview, ...extras].slice(0, 2);
-  // Si on n'a qu'une seule image au total, la répéter pour tenir le layout
-  if (padded.length === 1) return [padded[0], padded[0]];
-  return padded;
-})();
-
-const totalCount = allImages.length;
-
-const previewItems = previewImages.map((img) => {
-  const index = allImages.findIndex((g) => g === img);
-  return {
-    src: resolveImageUrl(img, 1800) ?? '',
-    alt: img.alt ? getLocalized(img.alt, lang) : '',
-    index: index >= 0 ? index : 0,
-  };
-});
-
-const slideshowImages = allImages.map((img) => ({
+const images = allImages.map((img) => ({
   src: resolveImageUrl(img, 2400) ?? '',
-  alt: img.alt ? getLocalized(img.alt, lang) : '',
+  alt: img.alt ? getLocalized(img.alt, lang) : title,
 }));
 
-const openLabel = t.projects.openSlideshow;
+// Grouper en paires de 2
+const pairs: (typeof images)[] = [];
+for (let i = 0; i < images.length; i += 2) {
+  pairs.push(images.slice(i, i + 2));
+}
+const totalPairs = pairs.length;
+
+// Ligne d'info à afficher sous le titre
+const metaParts: string[] = [];
+if (project.location) metaParts.push(getLocalized(project.location, lang));
+if (project.surface) metaParts.push(project.surface);
+const metaLine = metaParts.join(' · ');
 ---
-
-{hasGallery && previewItems.length > 0 && (
-  <section class="project-gallery" aria-label={title}>
-    <h1 class="project-gallery__title">{title}</h1>
-
-    <div class="project-gallery__grid">
-      {previewItems.map((item, i) => (
-        <button
-          type="button"
-          class="project-gallery__cell"
-          aria-label={`${openLabel} — ${item.alt}`}
-          data-slideshow-trigger
-          data-image-index={item.index}
-        >
-          <img
-            src={item.src}
-            alt={item.alt}
-            class="project-gallery__img"
-            loading={i === 0 ? 'eager' : 'lazy'}
-            decoding="async"
-            fetchpriority={i === 0 ? 'high' : 'auto'}
-          />
-          {/* Overlay au survol — indique le nombre d'images du projet */}
-          <span class="project-gallery__overlay" aria-hidden="true">
-            <span class="project-gallery__count">{totalCount}</span>
-          </span>
-        </button>
-      ))}
-    </div>
-  </section>
-)}
 
 {!hasGallery && (
   <p class="font-sans text-sm text-greige-400 px-10 lg:px-16 py-16">
@@ -104,710 +54,508 @@ const openLabel = t.projects.openSlideshow;
   </p>
 )}
 
-{hasGallery && (
-  <div
-    id="slideshow-overlay"
-    class="slideshow"
-    role="dialog"
-    aria-modal="true"
-    aria-label={title}
-    aria-hidden="true"
-    tabindex="-1"
-    data-chrome="visible"
-  >
-    {/* Stage — deux <img> empilées pour crossfade directionnel */}
-    <div class="slideshow__stage" id="slideshow-stage">
-      <img
-        id="slideshow-image-a"
-        class="slideshow__image slideshow__image--active"
-        src=""
-        alt=""
-        decoding="async"
-        draggable="false"
-      />
-      <img
-        id="slideshow-image-b"
-        class="slideshow__image"
-        src=""
-        alt=""
-        decoding="async"
-        draggable="false"
-      />
+{hasGallery && images.length > 0 && (
+  <div class="pg-stage" id="pg-stage" role="region" aria-label={`Galerie ${title}`} aria-roledescription="carrousel">
+    {/* ── Header — titre + infos, toujours visible ─────────────────────── */}
+    <header class="pg-header">
+      <h1 class="pg-title">{title}</h1>
+      <div class="pg-header-meta">
+        {metaLine && <span class="pg-meta">{metaLine}</span>}
+      </div>
+    </header>
+
+    {/* ── Scène — les cadres blancs superposés, crossfade ──────────────── */}
+    <div class="pg-frames">
+      {pairs.map((pair, pairIdx) => (
+        <div
+          class={`pg-pair${pairIdx === 0 ? ' pg-pair--active' : ''}`}
+          data-pair={pairIdx}
+          aria-hidden={pairIdx === 0 ? 'false' : 'true'}
+          aria-label={`Images ${pairIdx * 2 + 1}${pair.length > 1 ? `–${pairIdx * 2 + 2}` : ''} sur ${images.length}`}
+        >
+          {/* LE CADRE BLANC — contient 2 images, ou 1 seule centrée si impair */}
+          <div class={`pg-frame${pair.length === 1 ? ' pg-frame--single' : ''}`}>
+            {pair.map((item, imgIdx) => (
+              <div class="pg-cell">
+                <img
+                  src={item.src}
+                  alt={item.alt}
+                  class="pg-img"
+                  loading={pairIdx === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchpriority={pairIdx === 0 && imgIdx === 0 ? 'high' : 'auto'}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* ── Mobile : une seule image par vue (jeu de slides dédié) ───────── */}
+      {images.map((item, imgIdx) => (
+        <div
+          class={`pg-single${imgIdx === 0 ? ' pg-single--active' : ''}`}
+          data-single={imgIdx}
+          aria-hidden={imgIdx === 0 ? 'false' : 'true'}
+          aria-label={`Image ${imgIdx + 1} sur ${images.length}`}
+        >
+          <div class="pg-frame pg-frame--solo">
+            <div class="pg-cell">
+              <img
+                src={item.src}
+                alt={item.alt}
+                class="pg-img"
+                loading={imgIdx === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* ── Zones de clic — moitié gauche : précédent, moitié droite : suivant ──
+           (présentes dès qu'il y a plus d'une vue : paires en desktop, images en mobile) */}
+      {images.length > 1 && (
+        <>
+          <button type="button" id="pg-zone-prev" class="pg-zone pg-zone--prev" aria-label="Paire précédente" hidden></button>
+          <button type="button" id="pg-zone-next" class="pg-zone pg-zone--next" aria-label="Paire suivante"></button>
+        </>
+      )}
     </div>
 
-    {/* Top bar : compteur + fermer */}
-    <div class="slideshow__topbar">
-      <span id="slideshow-counter" class="slideshow__counter" aria-live="polite"></span>
-      <button
-        type="button"
-        id="slideshow-close"
-        class="slideshow__btn slideshow__btn--close"
-        aria-label={t.projects.closeSlideshow}
-      >
-        <svg viewBox="0 0 24 24" fill="none" class="slideshow__icon" aria-hidden="true">
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    {/* ── Navigation — sous le cadre, dans le flux (jamais superposée) ──── */}
+    <nav class="pg-nav" aria-label="Navigation galerie">
+      <button type="button" id="pg-prev" class="pg-btn" aria-label="Paire précédente" disabled>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" class="pg-icon">
+          <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
-    </div>
-
-    {/* Flèches latérales */}
-    <button
-      type="button"
-      id="slideshow-prev"
-      class="slideshow__btn slideshow__btn--prev"
-      aria-label={t.projects.prevImage}
-    >
-      <svg viewBox="0 0 24 24" fill="none" class="slideshow__icon-lg" aria-hidden="true">
-        <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
-    <button
-      type="button"
-      id="slideshow-next"
-      class="slideshow__btn slideshow__btn--next"
-      aria-label={t.projects.nextImage}
-    >
-      <svg viewBox="0 0 24 24" fill="none" class="slideshow__icon-lg" aria-hidden="true">
-        <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
+      <span class="pg-counter" id="pg-counter" aria-live="polite" aria-atomic="true">
+        1&thinsp;/&thinsp;{totalPairs}
+      </span>
+      <button type="button" id="pg-next" class="pg-btn" aria-label="Paire suivante" disabled={totalPairs <= 1}>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" class="pg-icon">
+          <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </nav>
   </div>
 )}
 
-{hasGallery && (
-  <script define:vars={{ slideshowImages, counterTemplate: { fr: 'Image $1 sur $2', en: 'Image $1 of $2' }, lang }}>
-  (function initSlideshow() {
-    const overlay = document.getElementById('slideshow-overlay');
-    const stage = document.getElementById('slideshow-stage');
-    const stageA = document.getElementById('slideshow-image-a');
-    const stageB = document.getElementById('slideshow-image-b');
-    const counter = document.getElementById('slideshow-counter');
-    const prevBtn = document.getElementById('slideshow-prev');
-    const nextBtn = document.getElementById('slideshow-next');
-    const closeBtn = document.getElementById('slideshow-close');
-
-    const images = slideshowImages || [];
-    const total = images.length;
-    if (total === 0 || !overlay || !stage || !stageA || !stageB) return;
-
-    let current = 0;
-    /** 'a' ou 'b' — quel <img> est visible. */
-    let activeStage = 'a';
-    let lastFocus = null;
-    let chromeTimer = null;
-    let isAnimating = false;
-    const preloaded = new Set();
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // ─── Préchargement ────────────────────────────────────────────────────
-    function preload(index) {
-      if (index < 0 || index >= total || preloaded.has(index)) return;
-      const img = new Image();
-      img.src = images[index].src;
-      preloaded.add(index);
-    }
-    function preloadNeighbors(index) {
-      preload(index);
-      preload((index + 1) % total);
-      preload((index - 1 + total) % total);
-    }
-
-    // ─── Chrome auto-hide ─────────────────────────────────────────────────
-    function showChrome() {
-      overlay.setAttribute('data-chrome', 'visible');
-      if (chromeTimer) clearTimeout(chromeTimer);
-      chromeTimer = setTimeout(() => {
-        if (overlay.classList.contains('slideshow--open')) {
-          overlay.setAttribute('data-chrome', 'hidden');
-        }
-      }, 2800);
-    }
-
-    // ─── Crossfade directionnel ───────────────────────────────────────────
-    /**
-     * direction : -1 (← prev), +1 (→ next), 0 (saut direct, pas de translate)
-     */
-    function setImage(index, direction) {
-      const data = images[index];
-      if (!data) return;
-      const showing = activeStage === 'a' ? stageA : stageB;
-      const incoming = activeStage === 'a' ? stageB : stageA;
-
-      const sameSrc = incoming.getAttribute('src') === data.src;
-      if (!sameSrc) incoming.src = data.src;
-      incoming.alt = data.alt || '';
-
-      const commit = () => {
-        // Position de départ de l'image entrante (légèrement décalée selon direction)
-        if (!prefersReduced && direction !== 0) {
-          incoming.style.transition = 'none';
-          incoming.style.opacity = '0';
-          incoming.style.transform = `translate(calc(-50% + ${direction * 24}px), -50%) scale(0.985)`;
-          // Force reflow
-          void incoming.offsetWidth;
-        }
-
-        // Faire entrer la nouvelle
-        incoming.style.transition = '';
-        incoming.classList.add('slideshow__image--active');
-        incoming.style.opacity = '';
-        incoming.style.transform = '';
-
-        // Faire sortir l'ancienne en direction opposée
-        if (!prefersReduced && direction !== 0) {
-          showing.style.transition = '';
-          showing.style.transform = `translate(calc(-50% + ${-direction * 16}px), -50%) scale(0.99)`;
-          showing.style.opacity = '0';
-        } else {
-          showing.style.opacity = '0';
-        }
-        showing.classList.remove('slideshow__image--active');
-
-        // Nettoyage après l'animation
-        setTimeout(() => {
-          showing.style.transition = 'none';
-          showing.style.transform = '';
-          showing.style.opacity = '';
-          void showing.offsetWidth;
-          showing.style.transition = '';
-          isAnimating = false;
-        }, 620);
-
-        activeStage = activeStage === 'a' ? 'b' : 'a';
-      };
-
-      isAnimating = true;
-      let committed = false;
-      const safeCommit = () => {
-        if (committed) return;
-        committed = true;
-        commit();
-      };
-
-      if (prefersReduced || incoming.complete) {
-        safeCommit();
-      } else {
-        const onLoad = () => safeCommit();
-        incoming.addEventListener('load', onLoad, { once: true });
-        // Sécurité : on basculera quoi qu'il arrive après 700 ms
-        setTimeout(() => {
-          incoming.removeEventListener('load', onLoad);
-          safeCommit();
-        }, 700);
-      }
-    }
-
-    function updateCounter(index) {
-      if (!counter) return;
-      const tpl = (counterTemplate && counterTemplate[lang]) || 'Image $1 / $2';
-      counter.textContent = tpl
-        .replace('$1', String(index + 1).padStart(2, '0'))
-        .replace('$2', String(total).padStart(2, '0'));
-    }
-
-    // ─── Open / close ─────────────────────────────────────────────────────
-    function open(index) {
-      lastFocus = document.activeElement;
-      // Déplacer l'overlay en enfant direct de <body> pour sortir du
-      // stacking context de <main> (view-transition-name) et s'afficher
-      // au-dessus de la sidebar (z-40) avec z-index: 1000.
-      if (overlay.parentElement !== document.body) {
-        document.body.appendChild(overlay);
-      }
-      current = Math.max(0, Math.min(index, total - 1));
-      overlay.classList.add('slideshow--open');
-      overlay.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
-      updateCounter(current);
-      preloadNeighbors(current);
-      // Crossfade sans direction au premier affichage / réouverture
-      setImage(current, 0);
-      showChrome();
-      // Focus pour pouvoir fermer immédiatement avec Esc
-      setTimeout(() => closeBtn && closeBtn.focus({ preventScroll: true }), 60);
-    }
-
-    function close() {
-      overlay.classList.remove('slideshow--open');
-      overlay.setAttribute('aria-hidden', 'true');
-      overlay.setAttribute('data-chrome', 'visible');
-      if (chromeTimer) clearTimeout(chromeTimer);
-      document.body.style.overflow = '';
-      // Reset translations éventuelles de drag
-      [stageA, stageB].forEach((el) => {
-        el.style.transition = 'none';
-        el.style.transform = '';
-        void el.offsetWidth;
-        el.style.transition = '';
-      });
-      if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
-    }
-
-    // ─── Navigation ───────────────────────────────────────────────────────
-    function go(delta) {
-      if (isAnimating) return;
-      const next = (current + delta + total) % total;
-      current = next;
-      setImage(current, delta > 0 ? 1 : -1);
-      updateCounter(current);
-      preloadNeighbors(current);
-      showChrome();
-    }
-
-    function goTo(index) {
-      if (isAnimating || index === current) return;
-      const direction = index > current ? 1 : -1;
-      current = Math.max(0, Math.min(index, total - 1));
-      setImage(current, direction);
-      updateCounter(current);
-      preloadNeighbors(current);
-      showChrome();
-    }
-
-    // ─── Bindings ─────────────────────────────────────────────────────────
-    document.querySelectorAll('[data-slideshow-trigger]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        open(parseInt(btn.getAttribute('data-image-index') || '0', 10));
-      });
-    });
-
-    closeBtn && closeBtn.addEventListener('click', close);
-    prevBtn && prevBtn.addEventListener('click', () => go(-1));
-    nextBtn && nextBtn.addEventListener('click', () => go(1));
-
-    // Clic sur le fond (pas sur l'image / pas sur un bouton) → fermer
-    overlay.addEventListener('click', (e) => {
-      const target = e.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest('.slideshow__btn')) return;
-      if (target.closest('.slideshow__image')) return;
-      if (target.closest('.slideshow__topbar')) return;
-      close();
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (!overlay.classList.contains('slideshow--open')) return;
-      switch (e.key) {
-        case 'Escape': e.preventDefault(); close(); break;
-        case 'ArrowRight': e.preventDefault(); go(1); break;
-        case 'ArrowLeft': e.preventDefault(); go(-1); break;
-        case 'Home': e.preventDefault(); goTo(0); break;
-        case 'End': e.preventDefault(); goTo(total - 1); break;
-      }
-    });
-
-    // Mouvement souris → réafficher chrome
-    overlay.addEventListener('mousemove', showChrome);
-    overlay.addEventListener('touchstart', showChrome, { passive: true });
-
-    // ─── Swipe / drag tactile avec follow-finger ──────────────────────────
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let dragging = false;
-    let dragDx = 0;
-
-    function getActiveImg() {
-      return activeStage === 'a' ? stageA : stageB;
-    }
-
-    overlay.addEventListener('touchstart', (e) => {
-      if (isAnimating) return;
-      dragStartX = e.touches[0].clientX;
-      dragStartY = e.touches[0].clientY;
-      dragging = false;
-      dragDx = 0;
-    }, { passive: true });
-
-    overlay.addEventListener('touchmove', (e) => {
-      if (isAnimating) return;
-      const dx = e.touches[0].clientX - dragStartX;
-      const dy = e.touches[0].clientY - dragStartY;
-      // On démarre le drag horizontal seulement si on est plus horizontal que vertical
-      if (!dragging && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
-        dragging = true;
-      }
-      if (dragging) {
-        dragDx = dx;
-        const img = getActiveImg();
-        // résistance aux bords + suivi du doigt
-        img.style.transition = 'none';
-        img.style.transform = `translate(calc(-50% + ${dx * 0.6}px), -50%) scale(0.995)`;
-      }
-    }, { passive: true });
-
-    overlay.addEventListener('touchend', () => {
-      if (!dragging) return;
-      dragging = false;
-      const img = getActiveImg();
-      // restaure transition
-      img.style.transition = '';
-      img.style.transform = '';
-      // Seuil 18% de la largeur viewport pour committer
-      const threshold = Math.max(60, window.innerWidth * 0.18);
-      if (Math.abs(dragDx) > threshold) {
-        go(dragDx < 0 ? 1 : -1);
-      }
-      dragDx = 0;
-    }, { passive: true });
-
-    // Nettoyage View Transitions
-    document.addEventListener('astro:before-preparation', () => {
-      if (overlay.classList.contains('slideshow--open')) close();
-    });
-  })();
-  </script>
-)}
-
 <style is:global>
-  /* ──────────────────────────────────────────────────────────────────────
-     PAGE PROJET — cadre blanc centré, fond greige autour
-     Inspiré du layout gallery : marges généreuses autour du cadre blanc,
-     padding intérieur, 2 images côte à côte séparées par 3 px.
-     ────────────────────────────────────────────────────────────────────── */
-  .project-gallery {
-    height: 100vh;
-    height: 100dvh;
-    box-sizing: border-box;
+  /* ── Scène plein écran — de la sidebar au bord droit ───────────────────── */
+  .pg-stage {
+    position: fixed;
+    top: 0; bottom: 0;
+    left: var(--sidebar-width);
+    right: 0;
     display: flex;
     flex-direction: column;
-    /*
-     * Padding externe = fond greige visible autour du cadre blanc.
-     * Haut : compact (titre + espace).
-     * Côtés et bas : généreux pour "flotter" le cadre dans la page.
-     */
-    padding: clamp(1.25rem, 2vw, 2rem)
-             clamp(2rem, 4vw, 4rem)
-             clamp(1.75rem, 3vw, 3rem);
-    overflow: hidden;
-    background: transparent; /* le fond vient du body/layout */
+    box-sizing: border-box;
+    /* Marges extérieures ivoire — le cadre blanc "flotte" dans la page */
+    padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 4vw, 4rem);
   }
 
-  .project-gallery__title {
+  @media (max-width: 1023px) {
+    .pg-stage { left: 0; padding-top: calc(60px + 0.75rem); }
+  }
+
+  /* ── Header — au-dessus du cadre blanc ──────────────────────────────────── */
+  .pg-header {
+    flex-shrink: 0;
+    padding-bottom: 0.85rem;
+  }
+
+  .pg-title {
     font-family: 'DM Sans', system-ui, sans-serif;
     font-weight: 400;
-    font-size: clamp(0.6rem, 0.85vw, 0.72rem);
-    letter-spacing: 0.3em;
+    font-size: clamp(0.7rem, 1.1vw, 0.9rem);
+    letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: #9E9489;
-    margin: 0 0 clamp(0.75rem, 1.5vh, 1.25rem);
-    line-height: 1;
-    flex: 0 0 auto;
-  }
-
-  .project-gallery__grid {
-    display: flex;
-    flex: 1 1 auto;
-    /*
-     * Cadre blanc — fond blanc, padding intérieur généreux,
-     * gap de 3 px entre les images (séparateur discret).
-     */
-    background: #FFFFFF;
-    padding: clamp(14px, 2vw, 26px);
-    gap: clamp(14px, 2vw, 26px);
-    min-height: 0;
-    align-items: stretch;
-  }
-
-  /* Cellule — bouton, occupe la moitié du cadre blanc */
-  .project-gallery__cell {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 0;
-    padding: 0;
+    color: #6B6A68;
     margin: 0;
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-    overflow: hidden;
-    display: block;
+    line-height: 1;
+  }
+
+  .pg-header-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.8rem;
+    margin-top: 0.4rem;
+  }
+
+  .pg-meta {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    color: #9E9489;
+    line-height: 1;
+  }
+
+  /* ── Conteneur des paires — superposition, crossfade ───────────────────── */
+  .pg-frames {
     position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
-  .project-gallery__cell:focus-visible {
-    outline: 2px solid #2A2926;
-    outline-offset: 3px;
+  .pg-pair {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;        /* cadre centré horizontalement sur la page */
+    justify-content: center;    /* cadre centré verticalement (hauteur = images) */
+    opacity: 0;
+    z-index: 0;
+    pointer-events: none;
+    transition: opacity 700ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity;
   }
 
-  /* Image — remplit sa cellule sans déformation */
-  .project-gallery__img {
+  .pg-pair--active {
+    opacity: 1;
+    z-index: 1;
+    pointer-events: auto;
+  }
+
+  /* ── LE CADRE BLANC — épouse les images ─────────────────────────────────── */
+  /* Bordure blanche uniforme (26px) en haut, en bas, sur les côtés et entre les
+     deux images. Cadre centré à l'écran ; le gris domine tout autour. */
+  .pg-frame {
+    flex: 0 1 auto;
+    min-height: 0;
+    width: 100%;
+    max-width: 560px;           /* plafond par défaut ; relevé par paliers */
+    display: flex;
+    background: #FFFFFF;
+    padding: 26px;
+    gap: 26px;
+    align-items: center;
+    box-sizing: border-box;
+  }
+
+  /* ── Cellule (boîte verticale identique) ─────────────────────────────────── */
+  /* Boîte au format vertical 2/3, dimensions STRICTEMENT identiques pour les deux
+     (hauteur fixée par palier, largeur = hauteur × 2/3). Toutes les images
+     occupent donc la même boîte -> cadre toujours de même hauteur et largeur,
+     aucun décalage. */
+  .pg-cell {
+    flex: 1 1 0;                          /* deux moitiés strictement égales */
+    aspect-ratio: 2 / 3;                  /* boîte verticale identique */
+    max-height: calc(100dvh - 200px);     /* garde-fou : jamais plus haut que l'écran */
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .pg-cell--empty {
+    background: transparent;
+  }
+
+  /* ── Image — remplit la boîte (recadrage) : paysage ramené au format vertical ─ */
+  .pg-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
     display: block;
-    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
-                filter 600ms ease;
-    will-change: transform;
   }
 
-  .project-gallery__cell:hover .project-gallery__img,
-  .project-gallery__cell:focus-visible .project-gallery__img {
-    transform: scale(1.02);
-    filter: brightness(0.88);
+  /* ── Image seule (nombre d'images impair) — même boîte verticale ────────── */
+  /* Le cadre épouse la boîte (identique aux autres) avec 26px uniformes,
+     centré à l'écran. La cellule garde son format vertical (recadrage). */
+  /* Sélecteur renforcé (.pg-frame.pg-frame--single) pour primer sur les paliers. */
+  .pg-frame.pg-frame--single {
+    max-width: min(460px, 70vw);   /* une seule boîte verticale, centrée */
   }
 
-  /* ── Overlay — fond gradient bas + compteur d'images ─────────────────── */
-  .project-gallery__overlay {
+  /* ── Zones de clic — invisibles, curseurs flèche sur mesure ────────────── */
+  .pg-zone {
+    appearance: none;
     position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: flex-end;
-    justify-content: flex-end;
-    padding: 0 1.1rem 1rem 0;
-    /* Gradient bas vers haut — assombrit subtilement le bas de l'image */
-    background: linear-gradient(
-      to top,
-      rgba(30, 25, 20, 0.38) 0%,
-      rgba(30, 25, 20, 0.10) 35%,
-      transparent 65%
-    );
-    opacity: 0;
-    transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1);
-    pointer-events: none;
+    top: 0; bottom: 0;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    z-index: 10;
   }
 
-  .project-gallery__cell:hover .project-gallery__overlay,
-  .project-gallery__cell:focus-visible .project-gallery__overlay {
-    opacity: 1;
-  }
-
-  /* Compteur — nombre total d'images, typographie éditoriale */
-  .project-gallery__count {
-    font-family: 'DM Sans', system-ui, sans-serif;
-    font-size: 0.6rem;
-    font-weight: 400;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: rgba(255, 252, 247, 0.88);
-    line-height: 1;
-    /* Petit suffixe "photos" intégré via pseudo-element */
-    display: flex;
-    align-items: baseline;
-    gap: 0.35em;
-  }
-
-  .project-gallery__count::after {
-    content: 'photos';
-    font-size: 0.55rem;
-    letter-spacing: 0.22em;
-    opacity: 0.72;
-  }
-
-  /* Mobile — empilement vertical */
-  @media (max-width: 767px) {
-    .project-gallery {
-      padding: clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 1.5rem) clamp(1.25rem, 3vw, 2rem);
-    }
-    .project-gallery__grid {
-      flex-direction: column;
-      padding: clamp(8px, 2vw, 14px);
-      gap: clamp(8px, 2vw, 14px);
-    }
-    .project-gallery__title {
-      margin-bottom: clamp(0.5rem, 1.5vh, 1rem);
-    }
-  }
-
-  /* ──────────────────────────────────────────────────────────────────────
-     DIAPORAMA IMMERSIF
-     Fond doux warm off-white assorti au site. Plein écran. UI minimaliste.
-     ────────────────────────────────────────────────────────────────────── */
-  .slideshow {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    /* Fond doux warm — chaude variation autour de l'ivoire du site */
-    background: #ECE6DC;
-    /* Vignette très subtile pour donner de la profondeur sans agressivité */
-    background-image:
-      radial-gradient(ellipse at center, transparent 55%, rgba(40, 32, 24, 0.06) 100%),
-      linear-gradient(180deg, #EFE9DF 0%, #E7E1D5 100%);
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 380ms cubic-bezier(0.22, 1, 0.36, 1),
-                visibility 0s linear 380ms;
-  }
-
-  .slideshow--open {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition: opacity 380ms cubic-bezier(0.22, 1, 0.36, 1),
-                visibility 0s linear 0s;
-  }
-
-  /* Stage — deux <img> empilées en absolu, centrées */
-  .slideshow__stage {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-  }
-
-  .slideshow__image {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.995);
-    /* Vraiment plein écran : marge très réduite sur les côtés */
-    max-width: 96vw;
-    max-height: 92dvh;
-    max-height: 92vh; /* fallback */
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    opacity: 0;
-    pointer-events: none;
-    user-select: none;
-    -webkit-user-drag: none;
-    /* Drop shadow très discret pour ancrer l'image sur le fond clair */
-    filter: drop-shadow(0 20px 40px rgba(40, 32, 24, 0.12))
-            drop-shadow(0 4px 12px rgba(40, 32, 24, 0.06));
-    transition: opacity 520ms cubic-bezier(0.32, 0.72, 0, 1),
-                transform 620ms cubic-bezier(0.32, 0.72, 0, 1);
-    will-change: transform, opacity;
-  }
-
-  .slideshow__image--active {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-    pointer-events: auto;
-  }
-
-  /* ── Top bar minimaliste ─────────────────────────────────────────────── */
-  .slideshow__topbar {
-    position: absolute;
-    top: 0;
+  .pg-zone--prev {
     left: 0;
+    width: 32%;
+    cursor: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='19' fill='%23FFFFFF' fill-opacity='0.9'/%3E%3Cpath d='M23 13l-7 7 7 7' stroke='%232A2926' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 20 20, w-resize;
+  }
+
+  .pg-zone--next {
     right: 0;
-    z-index: 3;
+    width: 68%;
+    cursor: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='19' fill='%23FFFFFF' fill-opacity='0.9'/%3E%3Cpath d='M17 13l7 7-7 7' stroke='%232A2926' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 20 20, e-resize;
+  }
+
+  .pg-zone:focus-visible {
+    outline: 2px solid rgba(42, 41, 38, 0.45);
+    outline-offset: -4px;
+  }
+
+  .pg-zone[hidden] { display: none; }
+
+  /* ── Nav — sous le cadre blanc, dans le flux de la scène ───────────────── */
+  .pg-nav {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: clamp(1rem, 2.5vw, 1.75rem) clamp(1rem, 2.5vw, 2rem);
-    pointer-events: none;
-    transition: opacity 380ms ease, transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+    justify-content: flex-end;
+    gap: 0.35rem;
+    padding-top: 0.7rem;
   }
 
-  .slideshow__topbar > * {
-    pointer-events: auto;
-  }
-
-  .slideshow__counter {
-    font-family: 'DM Sans', system-ui, sans-serif;
-    font-size: 0.6875rem;
-    letter-spacing: 0.3em;
-    color: rgba(42, 41, 38, 0.55);
-    font-variant-numeric: tabular-nums;
-    text-transform: uppercase;
-    user-select: none;
-  }
-
-  /* ── Boutons (anthracite sur fond clair) ────────────────────────────── */
-  .slideshow__btn {
+  /* Boutons épurés — chevron seul, ni cercle ni fond */
+  .pg-btn {
     appearance: none;
-    background: rgba(42, 41, 38, 0.04);
-    border: 1px solid rgba(42, 41, 38, 0.08);
-    border-radius: 999px;
-    color: rgba(42, 41, 38, 0.78);
-    padding: 0;
-    width: 44px;
-    height: 44px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    color: rgba(42, 41, 38, 0.38);
+    width: 30px;
+    height: 26px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    transition: background 280ms ease, border-color 280ms ease, color 280ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 380ms ease;
+    transition: color 280ms ease, transform 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
-  .slideshow__btn:hover,
-  .slideshow__btn:focus-visible {
-    background: rgba(42, 41, 38, 0.08);
-    border-color: rgba(42, 41, 38, 0.18);
+  .pg-btn:hover:not(:disabled),
+  .pg-btn:focus-visible:not(:disabled) {
     color: #2A2926;
+    background: transparent;
     outline: none;
   }
 
-  .slideshow__btn:focus-visible {
-    box-shadow: 0 0 0 2px #ECE6DC, 0 0 0 4px rgba(42, 41, 38, 0.35);
+  #pg-prev:hover:not(:disabled) { transform: translateX(-2px); }
+  #pg-next:hover:not(:disabled) { transform: translateX(2px); }
+
+  .pg-btn:disabled { opacity: 0.15; cursor: default; }
+
+  .pg-btn:focus-visible {
+    outline: 1px solid rgba(42, 41, 38, 0.35);
+    outline-offset: 2px;
   }
 
-  .slideshow__btn:active {
-    transform: scale(0.94);
+  .pg-icon { width: 16px; height: 16px; }
+
+  .pg-counter {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    color: #9E9489;
+    white-space: nowrap;
+    line-height: 1;
   }
 
-  .slideshow__btn--prev,
-  .slideshow__btn--next {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 3;
-    width: 52px;
-    height: 52px;
-    transition: background 280ms ease, border-color 280ms ease, color 280ms ease, opacity 380ms ease, transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
+  /* ── Paliers par taille d'écran (pas de fluide) ─────────────────────────── */
+  /* La HAUTEUR des images progresse par marches ; les deux images d'une paire
+     partagent la même hauteur -> bordure blanche uniforme (26px). Le min() avec
+     la hauteur de fenêtre n'est qu'un garde-fou pour ne jamais déborder. */
+  /* Largeur du cadre par palier -> taille des deux boîtes (toujours 2/3). */
+  @media (min-width: 768px)  { .pg-frame { max-width: 600px; } }
+  @media (min-width: 1100px) { .pg-frame { max-width: 720px; } }
+  @media (min-width: 1440px) { .pg-frame { max-width: 880px; } }
+  @media (min-width: 1920px) { .pg-frame { max-width: 1060px; } }
 
-  .slideshow__btn--prev { left: clamp(0.75rem, 2vw, 1.75rem); }
-  .slideshow__btn--next { right: clamp(0.75rem, 2vw, 1.75rem); }
+  /* ── Slides mobiles (une image par vue) — masquées en desktop ─────────── */
+  .pg-single { display: none; }
 
-  .slideshow__btn--prev:hover { transform: translateY(-50%) translateX(-2px); }
-  .slideshow__btn--next:hover { transform: translateY(-50%) translateX(2px); }
-  .slideshow__btn--prev:active { transform: translateY(-50%) scale(0.94); }
-  .slideshow__btn--next:active { transform: translateY(-50%) scale(0.94); }
-
-  .slideshow__icon { width: 16px; height: 16px; }
-  .slideshow__icon-lg { width: 22px; height: 22px; }
-
-  /* ── Chrome auto-hide ─────────────────────────────────────────────────
-     Quand `data-chrome="hidden"`, le compteur, le bouton fermer et les
-     flèches s'estompent doucement à 25 % d'opacité — toujours accessibles
-     mais pas intrusifs. Le moindre mouvement souris / touch les rappelle. */
-  .slideshow[data-chrome="hidden"] .slideshow__topbar,
-  .slideshow[data-chrome="hidden"] .slideshow__btn--prev,
-  .slideshow[data-chrome="hidden"] .slideshow__btn--next {
-    opacity: 0.2;
-  }
-  .slideshow[data-chrome="hidden"] .slideshow__btn--prev:hover,
-  .slideshow[data-chrome="hidden"] .slideshow__btn--next:hover,
-  .slideshow[data-chrome="hidden"] .slideshow__topbar:hover {
-    opacity: 1;
-  }
-
-  /* ── Mobile : flèches plus petites ────────────────────────────────── */
-  @media (max-width: 640px) {
-    .slideshow__btn--prev,
-    .slideshow__btn--next {
-      width: 40px;
-      height: 40px;
+  /* ── Mobile (< 768px) — une seule image par vue, cadre plein écran ─────── */
+  @media (max-width: 767px) {
+    /* Le cadre occupe tout l'espace disponible sous la barre de nav.
+       Le titre et les flèches gardent une marge latérale propre. */
+    .pg-stage {
+      padding: calc(60px + 0.5rem) 0 0.5rem;
     }
-    .slideshow__image {
-      max-width: 94vw;
-      max-height: 88dvh;
-      max-height: 88vh;
+    .pg-header,
+    .pg-nav {
+      padding-left: 1rem;
+      padding-right: 1rem;
     }
+    .pg-header { padding-bottom: 0.5rem; }
+
+    /* On bascule du jeu "paires" au jeu "une image" */
+    .pg-pair { display: none; }
+
+    .pg-single {
+      display: flex;
+      position: absolute;
+      inset: 0;
+      flex-direction: column;
+      align-items: stretch;    /* le cadre remplit toute la zone */
+      justify-content: stretch;
+      opacity: 0;
+      z-index: 0;
+      pointer-events: none;
+      transition: opacity 700ms cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: opacity;
+    }
+
+    .pg-single--active {
+      opacity: 1;
+      z-index: 1;
+      pointer-events: auto;
+    }
+
+    /* Cadre blanc plein écran — bordure uniforme de 22px, identique au desktop. */
+    .pg-frame--solo {
+      flex: 1 1 auto;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      padding: 22px;
+      box-sizing: border-box;
+    }
+
+    .pg-frame--solo .pg-cell {
+      flex: 1 1 auto;
+      width: 100%;
+      height: 100%;
+      aspect-ratio: auto;
+      max-height: none;
+    }
+
+    .pg-frame--solo .pg-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .pg-cell--empty { display: none; }
+    /* Zones de navigation 40/60, plus naturelles au pouce */
+    .pg-zone--prev { width: 40%; }
+    .pg-zone--next { width: 60%; }
   }
 
-  /* ── prefers-reduced-motion ───────────────────────────────────────── */
+  /* ── prefers-reduced-motion ──────────────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
-    .slideshow,
-    .slideshow__image,
-    .slideshow__btn,
-    .slideshow__topbar,
-    .project-gallery__img,
-    .project-gallery__overlay {
-      transition: none !important;
-      animation: none !important;
-    }
-    .project-gallery__cell:hover .project-gallery__img,
-    .project-gallery__cell:focus-visible .project-gallery__img {
-      transform: none !important;
-      filter: brightness(0.88) !important;
-    }
-    /* L'overlay reste visible sans animation */
-    .project-gallery__cell:hover .project-gallery__overlay,
-    .project-gallery__cell:focus-visible .project-gallery__overlay {
-      opacity: 1 !important;
-    }
+    .pg-pair { transition: none !important; }
+    .pg-btn  { transition: none !important; }
   }
 </style>
+
+{hasGallery && images.length > 0 && (
+  <script>
+  (function initGallery() {
+    const stage    = document.getElementById('pg-stage');
+    const prevBtn  = document.getElementById('pg-prev');
+    const nextBtn  = document.getElementById('pg-next');
+    const counter  = document.getElementById('pg-counter');
+    const zonePrev = document.getElementById('pg-zone-prev');
+    const zoneNext = document.getElementById('pg-zone-next');
+    if (!stage) return;
+
+    // Deux jeux de diapositives : paires (desktop) / une image (mobile).
+    const pairsEls   = Array.from(stage.querySelectorAll('.pg-pair'));
+    const singlesEls = Array.from(stage.querySelectorAll('.pg-single'));
+    const mq = window.matchMedia('(max-width: 767px)');
+
+    // Vue courante : liste d'éléments + classe active associée
+    let isMobile = mq.matches;
+    let slides   = isMobile ? singlesEls : pairsEls;
+    let cls      = isMobile ? 'pg-single--active' : 'pg-pair--active';
+    let total    = slides.length || 1;
+    let current  = 0;
+
+    function updateUI() {
+      if (counter) counter.innerHTML = `${current + 1}&thinsp;/&thinsp;${total}`;
+      if (prevBtn) prevBtn.disabled = (current === 0);
+      if (nextBtn) nextBtn.disabled = (current === total - 1);
+      if (zonePrev) zonePrev.hidden = (current === 0);
+      if (zoneNext) zoneNext.hidden = (current === total - 1);
+    }
+
+    function goTo(idx) {
+      const next = Math.max(0, Math.min(idx, total - 1));
+      if (next === current) return;
+
+      slides[current].classList.remove(cls);
+      slides[current].setAttribute('aria-hidden', 'true');
+
+      slides[next].classList.add(cls);
+      slides[next].setAttribute('aria-hidden', 'false');
+
+      current = next;
+      updateUI();
+    }
+
+    /* Bascule desktop <-> mobile : on conserve l'image affichée.
+       Paire n <-> images 2n et 2n+1. */
+    function switchMode(toMobile) {
+      const imageIndex = toMobile ? current * 2 : Math.floor(current / 2);
+
+      slides.forEach((el) => {
+        el.classList.remove(cls);
+        el.setAttribute('aria-hidden', 'true');
+      });
+
+      isMobile = toMobile;
+      slides   = toMobile ? singlesEls : pairsEls;
+      cls      = toMobile ? 'pg-single--active' : 'pg-pair--active';
+      total    = slides.length || 1;
+      current  = Math.max(0, Math.min(imageIndex, total - 1));
+
+      slides[current]?.classList.add(cls);
+      slides[current]?.setAttribute('aria-hidden', 'false');
+      updateUI();
+    }
+
+    mq.addEventListener('change', (e) => switchMode(e.matches));
+
+    // État initial cohérent si la page s'ouvre en mobile
+    if (isMobile) {
+      pairsEls.forEach((el) => {
+        el.classList.remove('pg-pair--active');
+        el.setAttribute('aria-hidden', 'true');
+      });
+      singlesEls[0]?.classList.add('pg-single--active');
+      singlesEls[0]?.setAttribute('aria-hidden', 'false');
+    }
+
+    prevBtn?.addEventListener('click', () => goTo(current - 1));
+    nextBtn?.addEventListener('click', () => goTo(current + 1));
+    zonePrev?.addEventListener('click', () => goTo(current - 1));
+    zoneNext?.addEventListener('click', () => goTo(current + 1));
+
+    // Clavier — flèches horizontales et verticales
+    document.addEventListener('keydown', (e) => {
+      if (e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); goTo(current + 1); }
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp'   || e.key === 'PageUp'  ) { e.preventDefault(); goTo(current - 1); }
+    });
+
+    // Swipe mobile — horizontal prioritaire, vertical accepté
+    let touchX = 0;
+    let touchY = 0;
+    stage.addEventListener('touchstart', (e) => {
+      touchX = e.touches[0].clientX;
+      touchY = e.touches[0].clientY;
+    }, { passive: true });
+    stage.addEventListener('touchend', (e) => {
+      const dx = touchX - e.changedTouches[0].clientX;
+      const dy = touchY - e.changedTouches[0].clientY;
+      const threshold = 48;
+      if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > threshold) {
+        goTo(dx > 0 ? current + 1 : current - 1);
+      } else if (Math.abs(dy) > threshold) {
+        goTo(dy > 0 ? current + 1 : current - 1);
+      }
+    }, { passive: true });
+
+    // Bloquer le scroll du body — la galerie est plein écran, sans défilement
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('astro:before-preparation', () => {
+      document.body.style.overflow = '';
+    }, { once: true });
+
+    updateUI();
+  })();
+  </script>
+)}

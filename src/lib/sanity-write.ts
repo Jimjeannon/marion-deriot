@@ -43,6 +43,9 @@ export const ADMIN_PROJECTS_QUERY = `
     slug,
     category,
     year,
+    location,
+    surface,
+    clientType,
     "gallery": gallery[] {
       _key,
       _type,
@@ -51,7 +54,8 @@ export const ADMIN_PROJECTS_QUERY = `
       crop,
       alt,
       isPreview,
-      "url": asset->url
+      "url": asset->url,
+      "filename": asset->originalFilename
     }
   }
 `;

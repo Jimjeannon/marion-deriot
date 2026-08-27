@@ -14,12 +14,17 @@ interface Props {
 const { lang } = Astro.props;
 const t = getDict(lang);
 const projects = await getAllProjects();
-const altLang: Locale = lang === 'fr' ? 'en' : 'fr';
+
+const socialLinks = [
+  { name: t.info.social.instagram, href: 'https://www.instagram.com/marionderiot.archi/', label: 'Instagram Marion Dériot' },
+  { name: t.info.social.linkedin, href: 'https://www.linkedin.com/in/marion-d%C3%A9riot-41b175135/', label: 'LinkedIn Marion Dériot' },
+  { name: t.info.social.pinterest, href: 'https://fr.pinterest.com/marionderiot/_saved/', label: 'Pinterest Marion Dériot' },
+];
 ---
 
 <div class="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-[#404040] border-b border-white/10">
   <!-- Logo compact mobile -->
-  <a href={lang === 'fr' ? '/home' : '/en/home'} class="font-serif text-base font-light text-ivory">
+  <a href="/home" class="font-serif text-base font-semibold text-ivory">
     Marion Dériot
   </a>
 
@@ -49,27 +54,36 @@ const altLang: Locale = lang === 'fr' ? 'en' : 'fr';
 
   <!-- Panel latéral -->
   <nav
-    class="absolute left-0 top-0 h-full w-64 bg-[#404040] shadow-xl flex flex-col justify-between py-10 px-8"
+    class="drawer-panel absolute left-0 top-0 h-full w-64 bg-[#404040] shadow-xl flex flex-col py-8 px-8"
     aria-label="Menu mobile"
   >
-    <div>
-      <a href={lang === 'fr' ? '/home' : '/en/home'} class="block mb-10">
-        <span class="block font-serif text-lg font-light text-ivory">Marion Dériot</span>
-        <span class="block font-sans text-xs tracking-[0.2em] uppercase text-greige-300 mt-0.5">
+    <div class="flex flex-col min-h-0 flex-1">
+      <a href={lang === 'fr' ? '/home' : '/en/home'} class="block mb-6 flex-shrink-0">
+        <span class="block font-serif text-xl font-semibold text-ivory">Marion Dériot</span>
+        <span class="block font-sans text-sm tracking-[0.15em] uppercase text-greige-300 mt-1.5">
           Architecte d'intérieur
         </span>
       </a>
-      <ul class="space-y-4" role="list">
-        <li>
+
+      <!-- Accueil / Projets resserrés ; la liste des projets défile si besoin -->
+      <ul class="space-y-0 flex flex-col min-h-0 flex-1" role="list">
+        <li class="flex-shrink-0">
           <a href={getLangUrl(lang, '/home')} class="nav-item text-base">
             {t.nav.home}
           </a>
         </li>
-        <li>
-          <a href={getLangUrl(lang, '/projets')} class="nav-item text-base">
+        <!-- Info avant Projets — même trame que la sidebar desktop -->
+        <li class="flex-shrink-0">
+          <a href={getLangUrl(lang, '/info')} class="nav-item text-base">
+            {t.nav.info}
+          </a>
+        </li>
+        <li class="flex flex-col min-h-0 flex-1">
+          <a href={getLangUrl(lang, '/projets')} class="nav-item text-base flex-shrink-0">
             {t.nav.projects}
           </a>
-          <ul class="mt-2 pl-3 space-y-1 border-l border-white/15" role="list">
+          <!-- Liste défilante : supporte l'ajout de projets depuis l'admin -->
+          <ul class="drawer-projects mt-1 pl-3 space-y-0.5 border-l border-white/15 overflow-y-auto min-h-0 flex-1" role="list">
             {projects.map((project) => {
               const slug = getProjectSlug(project, lang);
               const title = getLocalized(project.title, lang);
@@ -77,7 +91,7 @@ const altLang: Locale = lang === 'fr' ? 'en' : 'fr';
                 <li>
                   <a
                     href={getProjectUrl(lang, slug)}
-                    class="block text-xs font-sans text-greige-300 hover:text-ivory uppercase tracking-wide transition-colors duration-400"
+                    class="block text-sm font-sans text-greige-300 hover:text-ivory uppercase tracking-wide transition-colors duration-400 py-0.5"
                   >
                     {title}
                   </a>
@@ -86,24 +100,42 @@ const altLang: Locale = lang === 'fr' ? 'en' : 'fr';
             })}
           </ul>
         </li>
-        <li>
-          <a href={getLangUrl(lang, '/info')} class="nav-item text-base">
-            {t.nav.info}
-          </a>
-        </li>
       </ul>
     </div>
-    <div>
-      <a
-        href={getLangUrl(altLang, '/home')}
-        class="text-xs font-sans tracking-[0.15em] uppercase text-greige-300 hover:text-ivory transition-colors duration-400"
-        lang={lang === 'fr' ? 'en' : 'fr'}
-      >
-        {t.nav.switchLang}
-      </a>
-    </div>
+
+    <!-- Réseaux sociaux — séparés visuellement de la partie Projets -->
+    <nav aria-label="Réseaux sociaux" class="flex-shrink-0 mt-3 pt-3 border-t border-white/15">
+      <ul class="flex flex-col gap-1.5" role="list">
+        {socialLinks.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="block font-sans text-xs tracking-[0.15em] uppercase text-greige-300 hover:text-ivory transition-colors duration-400"
+              aria-label={link.label}
+            >
+              {link.name}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   </nav>
 </div>
+
+<style>
+  /* Liste des projets : défilement discret, sans barre visible.
+     Garantit que l'ajout de projets depuis l'admin ne casse pas la nav. */
+  .drawer-projects {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior: contain;
+  }
+  .drawer-projects::-webkit-scrollbar {
+    display: none;
+  }
+</style>
 
 <script>
   // AbortController pour nettoyer les listeners à chaque navigation

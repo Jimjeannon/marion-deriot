@@ -155,11 +155,13 @@ async function importProjectImages() {
 
   for (const projectFolder of projectFolders) {
     const projectPath = path.join(PROJECTS_DIR, projectFolder);
+    // Tri NATUREL : 1, 2, 3, … 10, 11 (et non 1, 10, 11, 2 — tri lexicographique)
+    // L'ordre des images affichées sur le site doit suivre les noms de fichiers.
     const imageFiles = fs
       .readdirSync(projectPath)
       .filter((f) => /\.(jpg|jpeg|png)$/i.test(f) && !f.startsWith('._'))
-      .map((f) => path.join(projectPath, f))
-      .sort();
+      .sort((a, b) => a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' }))
+      .map((f) => path.join(projectPath, f));
 
     if (imageFiles.length === 0) {
       console.log(`SKIP: ${projectFolder} (no images)`);

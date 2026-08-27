@@ -18,24 +18,24 @@ const t = getDict('fr');
 
 const images = [
   {
-    src: '/images/landing/01-cuisine-verte.jpg',
+    src: '/images/landing/01-cuisine-verte.webp',
     alt: 'Cuisine sur mesure — îlot central, lustre rouge, Agence Marion Dériot architecte d\'intérieur',
   },
   {
-    src: '/images/landing/02-cuisine-marbre.jpeg',
-    alt: 'Cuisine en marbre blanc et bois — banquette, conception Marion Dériot, Paris',
+    src: '/images/landing/02-lavoisier.webp',
+    alt: 'Lavoisier — réalisation Agence Marion Dériot architecte d\'intérieur',
   },
   {
-    src: '/images/landing/03-cuisine-pierre.jpg',
-    alt: 'Cuisine grise — îlot en pierre, tabourets, réalisation Agence Marion Dériot',
+    src: '/images/projets/BOURDONNAIS/0_0008.webp',
+    alt: 'Bourdonnais — intérieur, lumière et matières, Agence Marion Dériot architecte d\'intérieur, Paris 7ème',
   },
   {
-    src: '/images/landing/04-chambre-bleue.jpg',
-    alt: 'Chambre bleue sur mesure — parquet chêne, Agence Marion Dériot architecte d\'intérieur',
+    src: '/images/landing/04-mignet.webp',
+    alt: 'Mignet — conception Marion Dériot, Paris',
   },
   {
-    src: '/images/landing/05-chambre-naturelle.jpg',
-    alt: 'Chambre naturelle — tête de lit rotin, suspensions bois, Marion Dériot design',
+    src: '/images/projets/Vaucresson/_DSC5477.webp',
+    alt: 'Vaucresson — aménagement sur mesure, Agence Marion Dériot architecte d\'intérieur',
   },
 ];
 ---
@@ -74,7 +74,7 @@ const images = [
     <div class="slides-container" id="slides-container" aria-hidden="true">
       {images.map((img, i) => (
         <div
-          class={`slide${i === 0 ? ' slide--on' : ''}`}
+          class={`slide${i === 0 ? ' slide--on' : ''}${img.fit === 'contain' ? ' slide--contain' : ''}`}
           data-index={i}
           style={`background-image: url('${img.src}')`}
           role="img"
@@ -173,6 +173,13 @@ const images = [
     will-change: transform, opacity;
   }
 
+  /* Images verticales / basse résolution : affichées en entier, jamais zoomées,
+     encadrées sur l'ivoire (évite l'agrandissement flou du cover). */
+  .slide--contain {
+    background-size: contain;
+    background-color: #F5F3EF;
+  }
+
   .slide--on {
     opacity: 1;
     z-index: 1;
@@ -193,12 +200,29 @@ const images = [
     to   { transform: scale(1.04) translate( 0.6%, 0.3%); }
   }
 
+  /* ── Mobile : cadrage des images, notamment en format horizontal ────────── */
+  /* En portrait, une image paysage en "cover" est déjà fortement recadrée :
+     on supprime le zoom Ken Burns pour ne pas l'agrandir davantage, et on
+     centre le cadrage. Le défilement automatique reste inchangé. */
+  @media (max-width: 767px) {
+    .slide {
+      background-size: cover;
+      background-position: center center;
+    }
+    html.landing-ready .slide--on,
+    .slide--on,
+    .slide--on.slide--kb-reverse {
+      animation: none !important;
+      transform: none !important;
+    }
+  }
+
   /* ── Gradient localisé top-left — retiré, remplacé par carte givrée ────── */
   .landing-title-gradient {
     display: none;
   }
 
-  /* ── Identité — carte givrée ─────────────────────────────────────────────── */
+  /* ── Identité — texte noir sans cadre ─────────────────────────────────────── */
   .landing-identity {
     position: absolute;
     top: clamp(1.75rem, 3.5vw, 3rem);
@@ -210,31 +234,42 @@ const images = [
     transition:
       opacity 900ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
       transform 900ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    background: rgba(245, 243, 239, 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    padding: 1.5rem 2rem;
-    border-radius: 2px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* Lockup : tagline en espacement standard, calibrée pour couvrir
+     à peu près la largeur de « Marion Dériot » (sans étirement). */
+  .landing-identity {
+    width: max-content;
   }
 
   .landing-name {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: clamp(1.6rem, 3.2vw, 2.5rem);
-    font-weight: 300;
+    /* 3rem max — même longueur visuelle que la tagline en dessous */
+    font-size: clamp(1.875rem, 4vw, 3rem);
+    font-weight: 600;
     color: #111110;
     letter-spacing: 0.04em;
-    line-height: 1;
-    margin: 0 0 0.5rem;
+    line-height: 1.1;
+    margin: 0 0 0.7rem;
+    white-space: nowrap;
   }
 
   .landing-tagline {
     font-family: 'DM Sans', system-ui, sans-serif;
-    font-size: 0.65rem;
-    letter-spacing: 0.32em;
+    font-size: clamp(0.7rem, 1.28vw, 0.96rem);
+    font-weight: 400;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #3D3C3A;
+    color: #6B6A68;
     margin: 0;
+    line-height: 1.4;
+    white-space: nowrap;
   }
 
   /* ── Contrôles bas-centré (dots + bouton Entrer) ─────────────────────────── */
@@ -250,19 +285,19 @@ const images = [
     gap: 1.25rem;
   }
 
-  /* ── Bouton "Entrer" — carte givrée ──────────────────────────────────────── */
+  /* ── Bouton "Entrer" — encadrement noir ──────────────────────────────────── */
   .landing-enter {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(245, 243, 239, 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: none;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: 1px solid #111110;
     cursor: pointer;
-    padding: 0.875rem 2.75rem;
-    border-radius: 2px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 0.7rem 2.2rem;
+    border-radius: 0;
+    box-shadow: none;
     transition:
       background 400ms ease,
       border-color 400ms ease,
@@ -271,17 +306,18 @@ const images = [
 
   .landing-enter:hover,
   .landing-enter:focus-visible {
-    background: rgba(245, 243, 239, 0.95);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    background: rgba(17, 17, 16, 0.05);
+    box-shadow: none;
     outline: none;
   }
 
   .enter-label {
     font-family: 'DM Sans', system-ui, sans-serif;
-    font-size: 0.68rem;
-    letter-spacing: 0.30em;
+    font-size: 0.8rem;
+    letter-spacing: 0.28em;
     text-transform: uppercase;
     color: #111110;
+    font-weight: 500;
   }
 
   /* ── Indicateurs de slide (mobile uniquement) ────────────────────────────── */

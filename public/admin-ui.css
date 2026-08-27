@@ -1,0 +1,254 @@
+/**
+ * admin-ui.css — Styles de l'éditeur de projet (modal plein écran + cartes images)
+ * Chargé avec cache-busting depuis /admin. Prime sur les styles inline de la page.
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODAL — quasi plein écran, structure en colonnes (header / corps / footer)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.modal-overlay {
+  align-items: center !important;
+  padding: clamp(0.5rem, 1.5vw, 1.5rem) !important;
+  overflow: hidden !important;
+}
+
+.modal {
+  width: 100% !important;
+  max-width: none !important;
+  height: calc(100dvh - clamp(1rem, 3vw, 3rem)) !important;
+  max-height: none !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  transform: translateY(14px);
+}
+
+.modal-overlay.open .modal {
+  transform: translateY(0);
+}
+
+.modal-hd {
+  position: static !important;
+  flex-shrink: 0 !important;
+}
+
+.modal-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 1.5rem clamp(1.5rem, 3vw, 3rem) 2rem !important;
+}
+
+.modal-ft {
+  position: static !important;
+  flex-shrink: 0 !important;
+}
+
+#modal-error-bar {
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GRILLE DES CARTES IMAGES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gallery-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)) !important;
+  gap: 1rem !important;
+  margin-bottom: 1rem !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 560px) {
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+    gap: 0.75rem !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARTE IMAGE — image entière, infos lisibles, actions toujours visibles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gcard {
+  position: relative;
+  border: 1px solid var(--color-greige-100, #E8E4DE);
+  border-radius: 6px;
+  overflow: hidden;
+  background: white;
+  cursor: grab;
+  user-select: none;
+  transition: border-color 180ms, box-shadow 180ms, opacity 180ms;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-shadow: 0 2px 6px rgba(44, 43, 41, 0.06);
+}
+
+.gcard:active { cursor: grabbing; }
+
+.gcard:hover {
+  border-color: var(--color-greige-200, #D4CDC4);
+  box-shadow: 0 4px 16px rgba(44, 43, 41, 0.1);
+}
+
+.gcard.preview-on {
+  border-color: var(--color-accent, #8B7355);
+  box-shadow: 0 0 0 1px var(--color-accent, #8B7355), 0 2px 6px rgba(44, 43, 41, 0.06);
+}
+
+.gcard.drag-over {
+  border-style: dashed;
+  border-color: var(--color-accent, #8B7355);
+}
+
+.gcard.dragging {
+  opacity: 0.35;
+  z-index: 10;
+}
+
+/* Zone image — proportion fixe, image ENTIÈRE (object-fit: contain) */
+.gcard-img {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #FAFAF8;
+  overflow: hidden;
+}
+
+.gcard-img img {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  object-fit: contain !important;
+  display: block;
+  pointer-events: none;
+}
+
+/* Étiquette Preview */
+.gcard-flag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 0.2rem 0.5rem;
+  background: var(--color-accent, #8B7355);
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  pointer-events: none;
+  line-height: 1.2;
+  z-index: 2;
+}
+
+/* Barre d'infos + actions */
+.gcard-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  border-top: 1px solid var(--color-greige-100, #E8E4DE);
+  background: white;
+  min-width: 0;
+}
+
+.gcard-num {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-ivory, #F5F3EF);
+  border: 1px solid var(--color-greige-100, #E8E4DE);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-anthracite, #2C2B29);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.gcard.preview-on .gcard-num {
+  background: var(--color-accent, #8B7355);
+  border-color: var(--color-accent, #8B7355);
+  color: white;
+}
+
+.gcard-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--color-greige-400, #9E9489);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gcard-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.gcard-act {
+  background: transparent;
+  border: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  cursor: pointer;
+  color: var(--color-greige-400, #9E9489);
+  transition: all 140ms;
+}
+
+.gcard-act svg { display: block; margin: auto; }
+
+.gcard-act:hover:not(:disabled) {
+  color: var(--color-accent, #8B7355);
+  background: rgba(139, 115, 85, 0.1);
+}
+
+.gcard-act[data-action="del"]:hover:not(:disabled) {
+  color: var(--color-danger, #B03030);
+  background: rgba(176, 48, 48, 0.08);
+}
+
+.gcard-act:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+/* Carte en cours d'upload */
+.gcard-upload-wrapper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(44, 43, 41, 0.55);
+  gap: 0.5rem;
+  z-index: 2;
+}
+
+/* Sécurité : ancien markup (.gimg) — si jamais un cache le ressort encore */
+.gimg img {
+  max-width: 100%;
+  object-fit: contain;
+}

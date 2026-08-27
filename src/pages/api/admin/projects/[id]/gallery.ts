@@ -64,7 +64,6 @@ export const PATCH: APIRoute = async ({ cookies, request, params }) => {
         if (slugFr || slugEn) {
           const revalidatePaths = [];
           if (slugFr) revalidatePaths.push(`/projets/${slugFr}`);
-          if (slugEn) revalidatePaths.push(`/en/projects/${slugEn}`);
 
           for (const path of revalidatePaths) {
             try {

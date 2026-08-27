@@ -1,0 +1,11 @@
+Dépose ici les trois photos manquantes de la page d'accueil.
+Le nom du fichier n'a pas d'importance, seul l'ordre compte — indique-le moi.
+
+  3  Bourdonnais  — faïence crème à stries horizontales, angle de douche
+  5  Projet non publié — quartzite rosé, deux mitigeurs en inox brossé
+ 10  Rebeval      — lampadaire à globe opalin, rideau de lin, chaise blanche
+
+Elles remplaceront, à qualité optimisée, les fichiers provisoires :
+  src/assets/home/03-bourdonnais-faience-striee.webp
+  src/assets/home/05-quartzite-rose-mitigeurs-inox.webp
+  src/assets/home/10-rebeval-lampadaire-globe.webp

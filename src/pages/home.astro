@@ -1,21 +1,158 @@
 ---
 /**
  * Homepage FR — /home
- * Layout sidebar. Point d'entrée après la landing.
- * Contenu à définir avec Marion — pour l'instant page d'accueil sobre avec intro.
+ * Diaporama plein-écran automatique — 6 diapositives de 2 images, répartition 50/50.
+ * Chaque diapositive est présentée dans un cadre blanc identique aux pages projets.
+ * Crossfade + Ken Burns, prefers-reduced-motion respecté.
+ *
+ * Images : servies via astro:assets (<Picture>) — AVIF prioritaire, repli WebP,
+ * srcset responsive, largeur/hauteur intrinsèques émises pour un CLS nul.
  */
 import MainLayout from '@/layouts/MainLayout.astro';
+import { Picture } from 'astro:assets';
 import { getDict } from '@/i18n';
-// import { getAllProjects, urlFor, getPreviewImages } from '@/lib/sanity';
+
+// ── Sources des 12 images de la home ───────────────────────────────────────
+// Les fichiers vivent dans src/assets/home/ : ils passent ainsi par le pipeline
+// d'optimisation d'Astro (sharp) au lieu d'être servis bruts depuis /public.
+import img01Lavoisier from '@/assets/home/01-lavoisier-salon-sculpture-anneaux.webp';
+import img02Vertbois from '@/assets/home/02-vertbois-cave-a-vin-brique-de-verre.webp';
+import img03Bourdonnais from '@/assets/home/03-bourdonnais-faience-striee.webp';
+import img04Breteuil from '@/assets/home/04-breteuil-cuisine-quartzite-laiton.webp';
+import img05Quartzite from '@/assets/home/05-quartzite-rose-mitigeurs-inox.webp';
+import img06Cdg from '@/assets/home/06-cdg-bibliotheque-metal-noir.webp';
+import img07RouleEscalier from '@/assets/home/07-square-du-roule-escalier-metal.webp';
+import img08RoulePortes from '@/assets/home/08-square-du-roule-portes-pliantes.webp';
+import img09Hervieu from '@/assets/home/09-hervieu-claustra-chene.webp';
+import img10Rebeval from '@/assets/home/10-rebeval-lampadaire-globe.webp';
+import img11Cambaceres from '@/assets/home/11-cambaceres-miroir-boules-quartzite.webp';
+import img12Vaucresson from '@/assets/home/12-vaucresson-miroirs-ovales-chene.webp';
 
 const t = getDict('fr');
 
-// TODO: charger projets en vedette depuis Sanity
-// const projects = await getAllProjects();
-// const featured = projects.slice(0, 3);
-
-const pageTitle = t.home.title;
+const pageTitle = t.home.metaTitle;
 const pageDescription = t.home.metaDescription;
+
+/**
+ * Les 12 images de la home, dans l'ordre du schéma de rendu validé par la cliente.
+ *
+ *   1 Lavoisier          2 Vertbois      |  3 Bourdonnais      4 Breteuil
+ *   5 projet non publié  6 CDG           |  7 Square du Roule  8 Square du Roule
+ *   9 Hervieu           10 Rebeval       | 11 Cambacérès      12 Vaucresson
+ *
+ * `slug` vaut null pour les projets sans fiche publiée (5 et 10) : l'image
+ * renvoie alors vers la liste des projets, jamais vers une URL inexistante.
+ *
+ * `alt` décrit la matière et l'ouvrage — utile aux lecteurs d'écran comme au
+ * référencement d'images. Jamais de liste de mots-clés.
+
+ */
+type HomeImage = {
+  src: ImageMetadata;
+  alt: string;
+  slug: string | null;
+  title: string;
+};
+
+const M = {
+  lavoisier: {
+    src: img01Lavoisier,
+    alt: "Salon du projet Lavoisier — double anneau de métal noir devant l'escalier suspendu en béton",
+    slug: 'lavoisier', title: 'LAVOISIER',
+  },
+  vertbois: {
+    src: img02Vertbois,
+    alt: 'Projet Vertbois — cave à vin derrière une paroi de briques de verre ondulé',
+    slug: 'vertbois', title: 'VERTBOIS',
+  },
+  bourdonnais: {
+    src: img03Bourdonnais,
+    alt: 'Projet Bourdonnais — faïence crème à fines stries horizontales, calepinage repris dans l\'angle de la douche',
+    slug: 'bourdonnais', title: 'BOURDONNAIS',
+  },
+  breteuil: {
+    src: img04Breteuil,
+    alt: 'Projet Breteuil — plan et crédence en quartzite veiné, robinetterie en laiton, façades striées',
+    slug: 'breteuil', title: 'BRETEUIL',
+  },
+  quartzite: {
+    src: img05Quartzite,
+    alt: "Salle d'eau sur mesure — vasque et crédence taillées dans un quartzite rosé translucide, mitigeurs encastrés en inox brossé",
+    slug: null, title: 'MARION DÉRIOT',
+  },
+  cdg: {
+    src: img06Cdg,
+    alt: 'Projet CDG à Boulogne-Billancourt — bibliothèque en métal noir, composition orthogonale sur mur clair',
+    slug: 'charles-de-gaulle', title: 'CDG BOULOGNE-BILLANCOURT',
+  },
+  rouleA: {
+    src: img07RouleEscalier,
+    alt: 'Projet Square du Roule — escalier en pierre et garde-corps en métal noir à barreaudage horizontal',
+    slug: 'square-du-roule', title: 'SQUARE DU ROULE',
+  },
+  rouleB: {
+    src: img08RoulePortes,
+    alt: 'Projet Square du Roule — portes pliantes vitrées à cadres en métal noir',
+    slug: 'square-du-roule', title: 'SQUARE DU ROULE',
+  },
+  hervieu: {
+    src: img09Hervieu,
+    alt: 'Projet Hervieu — claustra de tasseaux de chêne clair et façades en placage',
+    slug: 'hervieu', title: 'HERVIEU',
+  },
+  rebeval: {
+    src: img10Rebeval,
+    alt: 'Projet Rebeval — lampadaire à globe opalin sur pied de laiton, rideau de lin et corniche lumineuse en plafond',
+    slug: null, title: 'REBEVAL',
+  },
+  cambaceres: {
+    src: img11Cambaceres,
+    alt: 'Projet Cambacérès — miroir à cadre de boules tournées en bois et plan en quartzite doré',
+    slug: 'cambaceres', title: 'CAMBACERES',
+  },
+  vaucresson: {
+    src: img12Vaucresson,
+    alt: 'Projet Vaucresson — miroirs ovales et façades cintrées en chêne, double vasque en marbre',
+    slug: 'vaucresson', title: 'VAUCRESSON',
+  },
+} satisfies Record<string, HomeImage>;
+
+/**
+ * Frames du diaporama — 6 diapositives de 2 images, répartition 50/50.
+ */
+const frames: { images: HomeImage[] }[] = [
+  { images: [M.lavoisier, M.vertbois] },
+  { images: [M.bourdonnais, M.breteuil] },
+  { images: [M.quartzite, M.cdg] },
+  { images: [M.rouleA, M.rouleB] },
+  { images: [M.hervieu, M.rebeval] },
+  { images: [M.cambaceres, M.vaucresson] },
+];
+
+/* Mobile : liste plate — chaque image défile individuellement, dans l'ordre. */
+const mobileImages = frames.flatMap((frame) => frame.images);
+
+/** Destination d'une image : sa fiche projet, ou la liste si le projet n'est pas publié. */
+const linkFor = (img: HomeImage) => (img.slug ? `/projets/${img.slug}` : '/projets');
+const labelFor = (img: HomeImage) =>
+  img.slug ? `${t.projects.viewProject} ${img.title}` : t.home.seeAllProjects;
+
+/**
+ * Chaque cellule occupe la moitié de la largeur au-dessus de 768 px, la totalité
+ * en dessous. Les largeurs générées couvrent mobile, tablette, desktop et 2×.
+ */
+const CELL_SIZES = '(max-width: 767px) 100vw, 50vw';
+const CELL_WIDTHS = [640, 1040, 1440];
+
+/**
+ * Image de partage Open Graph / Twitter Card — JPEG 1200×630 servi depuis
+ * /public. Un WebP issu du pipeline serait mal rendu par plusieurs réseaux
+ * sociaux, et le ratio 1.91:1 est celui qu'ils attendent.
+ */
+const ogImage = new URL('/og-home.jpg', Astro.site).href;
+
+/** URL absolue d'une image, pour les données structurées. */
+const abs = (src: string) => new URL(src, Astro.site).href;
 ---
 
 <MainLayout
@@ -23,151 +160,529 @@ const pageDescription = t.home.metaDescription;
   description={pageDescription}
   lang="fr"
   activeNav="home"
+  ogImage={ogImage}
 >
-  <!-- Schema.org LocalBusiness -->
   <script type="application/ld+json" set:html={JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
-    'name': 'Agence Marion Dériot',
+    '@id': 'https://marionderiot.com/#agence',
+    'name': 'Agence Marion Dériot architecture intérieure & design',
+    'alternateName': ['Marion Renaudin Dériot', 'Marion Renaudin', 'Agence Marion Dériot'],
     'description': pageDescription,
     'url': 'https://marionderiot.com',
     'telephone': '+33686186270',
     'email': 'marionderiot.archi@gmail.com',
-    'address': {
-      '@type': 'PostalAddress',
-      'addressLocality': 'Boulogne-Billancourt',
-      'addressRegion': 'Île-de-France',
-      'addressCountry': 'FR',
+    'image': [abs(img01Lavoisier.src), abs(img04Breteuil.src), abs(img11Cambaceres.src)],
+    'founder': {
+      '@type': 'Person',
+      'name': 'Marion Dériot',
+      'jobTitle': "Architecte d'intérieur",
+      'alumniOf': { '@type': 'CollegeOrUniversity', 'name': 'École Camondo' },
     },
-    'geo': {
-      '@type': 'GeoCoordinates',
-      'latitude': 48.8396,
-      'longitude': 2.2297,
-    },
+    'address': { '@type': 'PostalAddress', 'addressLocality': 'Boulogne-Billancourt', 'addressRegion': 'Île-de-France', 'addressCountry': 'FR' },
+    'geo': { '@type': 'GeoCoordinates', 'latitude': 48.8396, 'longitude': 2.2297 },
     'areaServed': [
       { '@type': 'City', 'name': 'Boulogne-Billancourt' },
       { '@type': 'City', 'name': 'Paris' },
       { '@type': 'State', 'name': 'Île-de-France' },
     ],
     'priceRange': '€€€',
-    'sameAs': [
-      'https://www.instagram.com/marionderiot',
-      'https://www.linkedin.com/in/marionderiot',
-    ],
+    'sameAs': ['https://www.instagram.com/marionderiot', 'https://www.linkedin.com/in/marionderiot'],
   })} />
 
-  <div class="home-content">
-    <!-- H1 unique de la page -->
-    <h1 class="sr-only">{pageTitle}</h1>
+  {/*
+    Galerie d'images déclarée séparément : chaque photo est rattachée à sa fiche
+    projet, ce qui permet à Google Images de relier l'image à la bonne page.
+  */}
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'ImageGallery',
+    'name': 'Réalisations — Agence Marion Dériot',
+    'description': pageDescription,
+    'url': 'https://marionderiot.com/home',
+    'author': { '@id': 'https://marionderiot.com/#agence' },
+    'associatedMedia': mobileImages.map((img) => ({
+      '@type': 'ImageObject',
+      'contentUrl': abs(img.src.src),
+      'caption': img.alt,
+      'representativeOfPage': img === M.lavoisier,
+      ...(img.slug ? { 'mainEntityOfPage': `https://marionderiot.com/projets/${img.slug}` } : {}),
+    })),
+  })} />
 
-    <!-- ─── Images plein écran ───────────────────────────────────────────── -->
-    <section class="home-materials" aria-label="Réalisations Marion Dériot">
-      <div class="home-materials__grid">
-        <div class="home-materials__cell home-materials__cell--wide">
-          <img
-            src="/images/acceuil/8.jpg"
-            alt="Intérieur sur mesure — réalisation Agence Marion Dériot, architecte d'intérieur"
-            class="home-materials__img"
-            loading="eager"
-            decoding="async"
-          />
+  <h1 class="sr-only">{t.home.h1}</h1>
+
+  <!-- ── Diaporama home ─────────────────────────────────────────────────── -->
+  <section class="hs" aria-label={t.home.slideshowLabel} aria-roledescription="diaporama" id="home-slideshow">
+
+    {frames.map((frame, fi) => {
+      const isActive = fi === 0;
+      const tabI = isActive ? '0' : '-1';
+
+      return (
+        <div
+          class={`hs-frame${isActive ? ' hs-frame--active' : ''}`}
+          data-frame={fi}
+          role="group"
+          aria-roledescription="diapositive"
+          aria-label={`Diapositive ${fi + 1} sur ${frames.length}`}
+          aria-hidden={!isActive ? 'true' : 'false'}
+        >
+          {/* Cadre blanc — 22px tout autour et entre les deux images */}
+          <div class="hs-board">
+            {frame.images.map((img) => (
+              <a
+                href={linkFor(img)}
+                class="hs-cell"
+                tabindex={tabI}
+                aria-label={labelFor(img)}
+              >
+                <Picture
+                  src={img.src}
+                  alt={img.alt}
+                  formats={['avif', 'webp']}
+                  fallbackFormat="webp"
+                  widths={CELL_WIDTHS}
+                  sizes={CELL_SIZES}
+                  class="hs-img"
+                  loading={isActive ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchpriority={isActive ? 'high' : 'auto'}
+                />
+              </a>
+            ))}
+          </div>
         </div>
-        <div class="home-materials__cell">
-          <img
-            src="/images/acceuil/14.jpg"
-            alt="Architecture intérieure — conception et détail de savoir-faire, Marion Dériot"
-            class="home-materials__img"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
-        <div class="home-materials__cell">
-          <img
-            src="/images/acceuil/17.jpg"
-            alt="Aménagement intérieur — assemblage de matériaux, Agence Marion Dériot Paris"
-            class="home-materials__img"
-            loading="lazy"
-            decoding="async"
-          />
+      );
+    })}
+
+  </section>
+
+  <!-- ── Diaporama mobile — chaque image défile une par une ─────────────────── -->
+  <section class="hsm" aria-label={t.home.slideshowLabel} aria-roledescription="diaporama" id="home-slideshow-mobile">
+    {mobileImages.map((img, mi) => (
+      <div
+        class={`hsm-slide${mi === 0 ? ' hsm-slide--active' : ''}`}
+        data-mslide={mi}
+        role="group"
+        aria-roledescription="diapositive"
+        aria-label={`Diapositive ${mi + 1} sur ${mobileImages.length}`}
+        aria-hidden={mi === 0 ? 'false' : 'true'}
+      >
+        <div class="hsm-board">
+          <a
+            href={linkFor(img)}
+            class="hsm-cell"
+            tabindex={mi === 0 ? '0' : '-1'}
+            aria-label={labelFor(img)}
+          >
+            <Picture
+              src={img.src}
+              alt={img.alt}
+              formats={['avif', 'webp']}
+              fallbackFormat="webp"
+              widths={CELL_WIDTHS}
+              sizes="100vw"
+              class="hs-img"
+              loading={mi === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+            />
+          </a>
         </div>
       </div>
-    </section>
-  </div>
+    ))}
+  </section>
+</MainLayout>
 
-  <style is:global>
-    /* ── Home plein écran — pas de scroll ───────────────────────────────── */
-    .home-content {
+<style is:global>
+  /* ── Zone de contenu home : plein écran (hauteur = viewport moins tablette) ── */
+  /* On override le padding/scroll global pour la page home */
+  body:has(#home-slideshow) .main-content {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* ── Conteneur diaporama ──────────────────────────────────────────────── */
+  .hs {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--color-bg);
+  }
+
+  /* ── Frames — superposées, crossfade ─────────────────────────────────── */
+  /* Marges extérieures ivoire — identiques aux pages projets */
+  .hs-frame {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    z-index: 0;
+    pointer-events: none;
+    /* Fondu long et progressif — doux pour l'œil, jamais agressif */
+    transition: opacity 1400ms cubic-bezier(0.45, 0.05, 0.30, 0.95);
+    will-change: opacity;
+    padding: clamp(1.5rem, 2.5vw, 2.5rem) clamp(2rem, 4vw, 4rem);
+    /* Le cadre blanc ne remplit plus la zone : il prend la plus grande taille
+       possible à format constant, et se centre dans la marge ivoire. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Conteneur de requête : permet au cadre de se dimensionner à partir de
+       la hauteur ET de la largeur disponibles (unités cqh / cqw). */
+    container-type: size;
+  }
+
+  .hs-frame--active {
+    opacity: 1;
+    z-index: 1;
+    pointer-events: auto;
+  }
+
+  /* ── Cadre blanc — format fixe, liseré constant ───────────────────────── */
+  /*
+   * Les deux cellules sont toujours au format 2:3, quel que soit l'écran.
+   * C'est ce qui garantit que les deux images d'une diapositive ont la même
+   * largeur et la même hauteur, et que le recadrage reste minime : huit des
+   * douze photos sont déjà en 2:3, elles ne perdent rien.
+   *
+   * Avant, le cadre remplissait la zone : la proportion d'une cellule passait
+   * de 0,63 sur un portable à 1,11 sur un écran large, et le recadrage grimpait
+   * jusqu'à 33 %. Le cadre prend désormais la plus grande taille qui tienne
+   * dans la zone à format constant, puis se centre.
+   *
+   * La hauteur est bornée par les deux contraintes :
+   *   — la hauteur disponible (100cqh) ;
+   *   — la largeur disponible, convertie en hauteur : deux cellules 2:3 plus
+   *     trois liserés font une largeur de (h - 2·pad) · 4/3 + 3·pad.
+   * Le liseré blanc vaut donc exactement --hs-pad sur les quatre bords ET
+   * entre les deux images, à toutes les tailles.
+   */
+  .hs-board {
+    --hs-pad: 22px;
+    display: flex;
+    background: #FFFFFF;
+    padding: var(--hs-pad);
+    gap: var(--hs-pad);
+    align-items: stretch;
+    box-sizing: border-box;
+
+    /* Repli si les unités de conteneur ne sont pas gérées : ancien comportement */
+    width: 100%;
+    height: 100%;
+
+    --hs-board-h: min(
+      100cqh,
+      (100cqw - var(--hs-pad) * 3) * 3 / 4 + var(--hs-pad) * 2
+    );
+    height: var(--hs-board-h);
+    width: calc((var(--hs-board-h) - var(--hs-pad) * 2) * 4 / 3 + var(--hs-pad) * 3);
+  }
+
+  /* ── Cellule — moitié exacte du cadre, l'image entière est le lien ────── */
+  .hs-cell {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    display: block;
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+    background: #FFFFFF;
+  }
+
+  /* <picture> est inline par défaut : on le force en bloc plein cadre pour
+     que le width/height 100% de .hs-img porte bien sur la cellule. */
+  .hs-cell picture,
+  .hsm-cell picture {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hs-cell:focus-visible {
+    outline: 2px solid #2A2926;
+    outline-offset: -2px;
+    z-index: 2;
+  }
+
+  /* ── Image — visible en entier dans sa cellule ────────────────────────── */
+  /* `contain` et non `cover` : la photo n'est jamais rognée. L'espace restant
+     est le blanc du cadre, qui se confond avec le passe-partout — le vide se
+     lit comme une marge voulue, pas comme un trou.
+     `cover` faisait perdre jusqu'à 33 % de certaines photos sur un portable,
+     la proportion d'une cellule variant de 0,63 à 1,11 selon l'écran. */
+  .hs-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    background: #FFFFFF;
+    filter: saturate(0.93);
+    transform-origin: center center;
+    will-change: transform;
+  }
+
+  /* Ken Burns sur le frame actif */
+  .hs-frame--active .hs-img {
+    animation: hsKenBurns 12s cubic-bezier(0.33, 0, 0.67, 1) forwards;
+  }
+
+  .hs-frame--active .hs-cell:nth-child(2) .hs-img {
+    animation-name: hsKenBurnsReverse;
+  }
+
+  /* Le mouvement part d'un léger retrait et rejoint la taille réelle : il ne
+     100 % : en dessous, un liseré blanc apparaîtrait au bord de l'image. */
+  @keyframes hsKenBurns {
+    from { transform: scale(1) translate(0%, 0%); }
+    to   { transform: scale(1.025) translate(-0.35%, -0.2%); }
+  }
+
+  @keyframes hsKenBurnsReverse {
+    from { transform: scale(1) translate(0%, 0%); }
+    to   { transform: scale(1.025) translate(0.35%, 0.2%); }
+  }
+
+  /* ── Hover léger (quand le frame est actif) ───────────────────────────── */
+  .hs-frame--active .hs-cell:hover .hs-img {
+    filter: saturate(1);
+    transition: filter 500ms ease;
+  }
+
+  /* ── Tablette 768–1023px : décaler le cadre sous la barre de nav fixe ───── */
+  /* NB : padding sur .hs est sans effet (frames en position:absolute) — on
+     décale via le padding-haut du frame, qui contient le cadre blanc. */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .hs-frame {
+      padding-top: calc(60px + clamp(1rem, 2.5vw, 2.5rem));
+    }
+  }
+
+
+  /* ── Diaporama mobile — une image à la fois, toutes défilent ────────────── */
+  /* Masqué par défaut (desktop/tablette) ; activé sous 768px. */
+  .hsm { display: none; }
+
+  @media (max-width: 767px) {
+    /* On désactive le diaporama desktop et on active le mobile */
+    .hs { display: none; }
+
+    .hsm {
+      display: block;
+      position: relative;
+      width: 100%;
       height: 100vh;
       height: 100dvh;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      padding: 0;
+      background: var(--color-bg);
     }
 
-    .home-materials {
-      flex: 1 1 0;
-      min-height: 0;
+    .hsm-slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      z-index: 0;
+      pointer-events: none;
+      transition: opacity 1400ms cubic-bezier(0.45, 0.05, 0.30, 0.95);
+      will-change: opacity;
+      /* Décalage sous la barre de navigation fixe (~60px) — le cadre occupe
+         tout l'espace restant de l'écran. */
+      padding: 60px 0 0;
       display: flex;
-      flex-direction: column;
     }
 
-    /* ── Grille 3 images ─────────────────────────────────────────────────── */
-    .home-materials__grid {
-      flex: 1 1 0;
-      min-height: 0;
-      display: grid;
-      grid-template-columns: 1.6fr 1fr;
-      grid-template-rows: 1fr 1fr;
+    .hsm-slide--active {
+      opacity: 1;
+      z-index: 1;
+      pointer-events: auto;
+    }
+
+    /* Cadre blanc plein écran — bordure uniforme de 22px, identique au desktop. */
+    .hsm-board {
+      flex: 1 1 auto;
+      width: 100%;
+      height: 100%;
+      display: flex;
       background: #FFFFFF;
-      padding: clamp(14px, 2vw, 26px);
-      gap: clamp(14px, 2vw, 26px);
+      padding: 22px;
+      box-sizing: border-box;
     }
 
-    .home-materials__cell--wide {
-      grid-row: span 2;
-    }
-
-    .home-materials__cell {
+    .hsm-cell {
+      flex: 1 1 auto;
+      display: block;
+      position: relative;
       overflow: hidden;
-      min-height: 0;
+      min-width: 0;
+      text-decoration: none;
     }
 
-    .home-materials__img {
+    /* Mobile : une seule image par diapositive, elle remplit le cadre. */
+    .hsm-board .hs-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      object-position: center;
       display: block;
-      filter: saturate(0.9);
-      transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
-                  filter 600ms ease;
     }
 
-    .home-materials__cell:hover .home-materials__img {
-      transform: scale(1.015);
-      filter: saturate(1);
+    .hsm-cell:focus-visible {
+      outline: 2px solid #2A2926;
+      outline-offset: -2px;
+    }
+  }
+
+  /* ── prefers-reduced-motion ──────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .hs-frame {
+      transition: none !important;
+    }
+    .hs-frame--active .hs-img,
+    .hs-frame--active .hs-cell:nth-child(2) .hs-img {
+      animation: none !important;
+    }
+    .hsm-slide {
+      transition: none !important;
+    }
+  }
+</style>
+
+<script>
+  // ── Diaporama home ───────────────────────────────────────────────────────────
+  // Cadence : 1ère diapo plus courte (on comprend tout de suite qu'il y a un
+  // défilement), puis un délai STRICTEMENT identique entre chaque diapo.
+  const frames = Array.from(document.querySelectorAll<HTMLElement>('.hs-frame'));
+  const FIRST_DELAY = 2500;
+  const INTERVAL    = 4500;
+  const FADE_MS     = 1400;
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let current = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  function resetKB(frame: HTMLElement) {
+    const imgs = frame.querySelectorAll<HTMLImageElement>('.hs-img');
+    imgs.forEach(img => {
+      img.style.animation = 'none';
+      void img.offsetHeight;
+      img.style.removeProperty('animation');
+    });
+  }
+
+  function goTo(next: number) {
+    if (next === current) return;
+
+    const oldFrame = frames[current];
+    const newFrame = frames[next];
+
+    if (prefersReduced) {
+      oldFrame.classList.remove('hs-frame--active');
+      oldFrame.setAttribute('aria-hidden', 'true');
+      oldFrame.querySelectorAll('a').forEach(a => a.setAttribute('tabindex', '-1'));
+
+      newFrame.classList.add('hs-frame--active');
+      newFrame.setAttribute('aria-hidden', 'false');
+      newFrame.querySelectorAll('a').forEach(a => a.setAttribute('tabindex', '0'));
+
+      current = next;
+      return;
     }
 
-    /* ── Mobile : empilement vertical ───────────────────────────────────── */
-    @media (max-width: 640px) {
-      .home-materials__grid {
-        grid-template-columns: 1fr;
-        grid-template-rows: 1fr 1fr 1fr;
-        padding: clamp(8px, 2vw, 14px);
-        gap: clamp(8px, 2vw, 14px);
-      }
-      .home-materials__cell--wide {
-        grid-row: span 1;
-      }
-    }
+    // Crossfade
+    resetKB(newFrame);
+    newFrame.classList.add('hs-frame--active');
+    newFrame.setAttribute('aria-hidden', 'false');
+    newFrame.querySelectorAll('a').forEach(a => a.setAttribute('tabindex', '0'));
 
-    @media (prefers-reduced-motion: reduce) {
-      .home-materials__img {
-        transition: none !important;
-      }
-      .home-materials__cell:hover .home-materials__img {
-        transform: none !important;
-      }
+    setTimeout(() => {
+      oldFrame.classList.remove('hs-frame--active');
+      oldFrame.setAttribute('aria-hidden', 'true');
+      oldFrame.querySelectorAll('a').forEach(a => a.setAttribute('tabindex', '-1'));
+    }, FADE_MS);
+
+    current = next;
+  }
+
+  function goNext() {
+    goTo((current + 1) % frames.length);
+  }
+
+  // setTimeout chaîné : délais rigoureusement constants après le premier
+  function schedule(delay: number) {
+    timer = setTimeout(() => {
+      goNext();
+      schedule(INTERVAL);
+    }, delay);
+  }
+
+  function startSlideshow() {
+    if (frames.length > 1) {
+      schedule(FIRST_DELAY);
     }
-  </style>
-</MainLayout>
+  }
+
+  startSlideshow();
+
+  // ── Diaporama mobile — chaque image défile une par une ────────────────────────
+  // Ensemble de diapos distinct (une image chacune), actif uniquement sous 768px
+  // via le CSS. Le cycler tourne en continu : sur desktop, .hsm est masqué donc
+  // invisible ; sur mobile, il pilote le défilement image par image.
+  const mSlides = Array.from(document.querySelectorAll<HTMLElement>('.hsm-slide'));
+  let mCurrent = 0;
+  let mTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function mGoTo(next: number) {
+    if (next === mCurrent) return;
+    const oldS = mSlides[mCurrent];
+    const newS = mSlides[next];
+
+    newS.classList.add('hsm-slide--active');
+    newS.setAttribute('aria-hidden', 'false');
+    newS.querySelectorAll('a').forEach(a => a.setAttribute('tabindex', '0'));
+
+    const commit = () => {
+      oldS.classList.remove('hsm-slide--active');
+      oldS.setAttribute('aria-hidden', 'true');
+      oldS.querySelectorAll('a').forEach(a => a.setAttribute('tabindex', '-1'));
+    };
+    if (prefersReduced) commit();
+    else setTimeout(commit, FADE_MS);
+
+    mCurrent = next;
+  }
+
+  function mSchedule(delay: number) {
+    mTimer = setTimeout(() => {
+      mGoTo((mCurrent + 1) % mSlides.length);
+      mSchedule(INTERVAL);
+    }, delay);
+  }
+
+  function startMobileSlideshow() {
+    if (mSlides.length > 1) {
+      mSchedule(FIRST_DELAY);
+    }
+  }
+
+  startMobileSlideshow();
+
+  // Redémarrer le diaporama quand on revient sur cette page (View Transitions)
+  document.addEventListener('astro:after-swap', () => {
+    // Reset et redémarrage des diaporamas
+    current = 0;
+    mCurrent = 0;
+    if (timer) clearTimeout(timer);
+    if (mTimer) clearTimeout(mTimer);
+    startSlideshow();
+    startMobileSlideshow();
+  });
+
+  document.addEventListener('astro:before-preparation', () => {
+    if (timer) clearTimeout(timer);
+    if (mTimer) clearTimeout(mTimer);
+  });
+</script>

@@ -12,7 +12,7 @@ import { getSanityWriteClient } from '@/lib/sanity-write';
 export const prerender = false;
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'];
-const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 Mo
+const MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 Mo
 
 function isAuthorized(cookies: AstroCookies): boolean {
   return verifySessionToken(cookies.get(SESSION_COOKIE_NAME)?.value);
@@ -39,18 +39,31 @@ export const POST: APIRoute = async ({ cookies, request, params }) => {
   }
 
   const file = formData.get('image') as File | null;
-  if (!file || !file.name) return json({ error: 'Aucun fichier fourni' }, 400);
+  if (!file || typeof file === 'string' || !(file.size > 0)) {
+    console.warn('[upload] 400 : aucun fichier exploitable');
+    return json({ error: 'Aucun fichier fourni.' }, 400);
+  }
 
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return json({ error: `Format non supporté. Acceptés : JPEG, PNG, WebP, AVIF.` }, 400);
+  const fallbackExt = (file.type && file.type.split('/')[1]) || 'jpg';
+  const fileName = file.name && file.name.trim() ? file.name : 'image-' + Date.now() + '.' + fallbackExt;
+
+  const ALLOWED_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif', '.heic', '.heif'];
+  const nameLower = fileName.toLowerCase();
+  const extOk = ALLOWED_EXT.some((e) => nameLower.endsWith(e));
+  const typeOk = !file.type || ALLOWED_TYPES.includes(file.type);
+  if (!extOk && !typeOk) {
+    console.warn('[upload] 400 : format non supporte', fileName, file.type);
+    return json({ error: 'Format non supporte. Acceptes : JPEG, PNG, WebP, AVIF.' }, 400);
   }
   if (file.size > MAX_SIZE_BYTES) {
-    return json({ error: 'Fichier trop volumineux (max 25 Mo).' }, 400);
+    console.warn('[upload] 400 : trop volumineux', file.size);
+    return json({ error: 'Fichier trop volumineux (max 50 Mo).' }, 400);
   }
 
   // isPreview transmis depuis le formulaire (champ texte "true"/"false")
   const isPreviewRaw = formData.get('isPreview');
-  const isPreview = isPreviewRaw === 'true';
+  let isPreview = isPreviewRaw === 'true';
+  let downgraded = false;
 
   try {
     const client = getSanityWriteClient();
@@ -61,16 +74,18 @@ export const POST: APIRoute = async ({ cookies, request, params }) => {
         `*[_type == "project" && _id == $id][0] { "previewCount": count(gallery[isPreview == true]) }`,
         { id }
       );
-      if (project?.previewCount >= 3) {
-        return json({ error: 'Maximum 3 images de preview. Retirez-en une avant d\'en ajouter.' }, 400);
+      if (project?.previewCount >= 2) {
+        // Au-dela de 2 previews : on ajoute l'image en galerie au lieu de bloquer.
+        isPreview = false;
+        downgraded = true;
       }
     }
 
     // 1. Upload vers Sanity Assets
     const buffer = Buffer.from(await file.arrayBuffer());
     const asset = await client.assets.upload('image', buffer, {
-      filename: file.name,
-      contentType: file.type,
+      filename: fileName,
+      contentType: file.type || undefined,
     });
 
     // 2. Ajouter l'image à la galerie du projet
@@ -99,7 +114,6 @@ export const POST: APIRoute = async ({ cookies, request, params }) => {
           // Appeler Vercel revalidate API (si disponible)
           const revalidatePaths = [];
           if (slugFr) revalidatePaths.push(`/projets/${slugFr}`);
-          if (slugEn) revalidatePaths.push(`/en/projects/${slugEn}`);
 
           // Envoyer la revalidation (marche avec Vercel ISR)
           for (const path of revalidatePaths) {
@@ -113,7 +127,7 @@ export const POST: APIRoute = async ({ cookies, request, params }) => {
       } catch {}
     }
 
-    return json({ assetId: asset._id, url: asset.url, filename: asset.originalFilename, isPreview }, 201);
+    return json({ assetId: asset._id, url: asset.url, filename: asset.originalFilename, isPreview, downgraded }, 201);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[upload] Sanity error:', err);

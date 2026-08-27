@@ -103,6 +103,37 @@ export const projectSchema = defineType({
         Rule.min(1990).max(new Date().getFullYear() + 1).integer(),
     }),
 
+    // ─── Lieu + Code postal ────────────────────────────────────────────────
+    defineField({
+      name: 'location',
+      title: 'Lieu',
+      type: 'string',
+      description: 'Ex : Boulogne-Billancourt, Vaucresson, etc.',
+    }),
+
+    defineField({
+      name: 'postalCode',
+      title: 'Code postal',
+      type: 'string',
+      description: 'Ex : 75008, 75007, etc. (optionnel)',
+    }),
+
+    // ─── Type de maîtrise d'ouvrage ────────────────────────────────────────
+    defineField({
+      name: 'clientType',
+      title: 'Type de maîtrise d\'ouvrage',
+      type: 'string',
+      description: 'Ex : maîtrise d\'ouvrage privée, rénovation complète d\'un hôtel particulier, etc.',
+    }),
+
+    // ─── Surface (m2) ──────────────────────────────────────────────────────
+    defineField({
+      name: 'surface',
+      title: 'Surface',
+      type: 'string',
+      description: 'Ex : 90m2, duplex 125m2, 300m2, etc.',
+    }),
+
     // ─── Galerie d'images ──────────────────────────────────────────────────
     defineField({
       name: 'gallery',

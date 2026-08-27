@@ -45,9 +45,8 @@ const siteName = 'Marion Dériot — Architecte d\'intérieur';
     <!-- Canonical -->
     <link rel="canonical" href={canonicalURL} />
 
-    <!-- hreflang FR/EN -->
+    <!-- hreflang FR -->
     <link rel="alternate" hreflang="fr" href={`${Astro.site}home`} />
-    <link rel="alternate" hreflang="en" href={`${Astro.site}en/home`} />
     <link rel="alternate" hreflang="x-default" href={`${Astro.site}home`} />
 
     <!-- Open Graph -->
@@ -57,6 +56,10 @@ const siteName = 'Marion Dériot — Architecte d\'intérieur';
     <meta property="og:description" content={description} />
     <meta property="og:site_name" content={siteName} />
     {ogImage && <meta property="og:image" content={ogImage} />}
+    {ogImage && <meta property="og:image:width" content="1200" />}
+    {ogImage && <meta property="og:image:height" content="630" />}
+    {ogImage && <meta property="og:image:alt" content={title} />}
+    <meta property="og:locale" content="fr_FR" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -73,6 +76,13 @@ const siteName = 'Marion Dériot — Architecte d\'intérieur';
 
     <!-- View Transitions Astro -->
     <ViewTransitions />
+
+    <!--
+      Slot « head » — permet à une page d'injecter ses propres balises dans le
+      <head> : préchargement de l'image LCP, données structurées, etc.
+      Indispensable pour tenir le budget LCP < 2.0 s.
+    -->
+    <slot name="head" />
 
     <style>
       /**

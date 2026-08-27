@@ -22,8 +22,6 @@ const currentProjectSlug = Astro.url.pathname.match(/\/(?:projets|projects)\/([^
 const homeUrl = getLangUrl(lang, '/home');
 const projectsUrl = getLangUrl(lang, '/projets');
 const infoUrl = getLangUrl(lang, '/info');
-const altLang: Locale = lang === 'fr' ? 'en' : 'fr';
-const altUrl = altLang === 'fr' ? '/home' : '/en/home';
 
 const socialLinks = [
   {
@@ -49,27 +47,27 @@ const socialLinks = [
 
 <!-- Sidebar desktop — masquée sur mobile/tablette -->
 <aside
-  class="sidebar max-lg:hidden py-10 px-8 z-40 flex flex-col"
+  class="sidebar max-lg:hidden py-8 px-5 z-40 flex flex-col"
   aria-label="Navigation principale"
 >
   <!-- ─── Haut : logo + navigation ─────────────────────────────────────── -->
   <div class="flex flex-col flex-1 min-h-0">
     <a
       href={homeUrl}
-      class="block mb-14 flex-shrink-0 group"
+      class="sidebar-logo block mb-6 flex-shrink-0"
       aria-label="Marion Dériot — Retour à l'accueil"
     >
-      <span class="block font-serif text-lg font-light tracking-wide text-anthracite-300 group-hover:text-greige-300 transition-colors duration-400">
+      <span class="sidebar-logo-name block font-serif font-bold text-anthracite-300">
         Marion Dériot
       </span>
-      <span class="block font-sans text-xs tracking-[0.2em] uppercase text-greige-300 mt-0.5">
-        Architecte d'intérieur
+      <span class="sidebar-logo-tagline block font-sans uppercase text-greige-300">
+        Architecture intérieure &amp; Design
       </span>
     </a>
 
     <!-- ─── Navigation principale ───────────────────────────────────────── -->
     <nav aria-label="Menu principal" class="sidebar-nav flex-1 min-h-0 overflow-y-auto overflow-x-visible pr-1">
-      <ul class="space-y-1" role="list">
+      <ul class="space-y-0" role="list">
         <!-- Home -->
         <li>
           <a
@@ -79,15 +77,6 @@ const socialLinks = [
           >
             {t.nav.home}
           </a>
-        </li>
-
-        <!-- Projets avec dropdown -->
-        <li>
-          <ProjectsDropdown
-            lang={lang}
-            isActive={activeNav === 'projects'}
-            currentSlug={currentProjectSlug}
-          />
         </li>
 
         <!-- Info -->
@@ -100,6 +89,15 @@ const socialLinks = [
             {t.nav.info}
           </a>
         </li>
+
+        <!-- Projets avec dropdown -->
+        <li>
+          <ProjectsDropdown
+            lang={lang}
+            isActive={activeNav === 'projects'}
+            currentSlug={currentProjectSlug}
+          />
+        </li>
       </ul>
     </nav>
   </div>
@@ -107,18 +105,20 @@ const socialLinks = [
   <!-- ─── Séparateur visuel — fondu bas masquant le contenu qui scroll ───── -->
   <div class="sidebar-nav-fade" aria-hidden="true"></div>
 
-  <!-- ─── Bas de sidebar : réseaux sociaux + switch langue + légal ──────── -->
-  <div class="mt-auto pt-8 flex-shrink-0 space-y-8">
-    <!-- Liens réseaux sociaux — noms en clair -->
-    <nav aria-label="Réseaux sociaux">
-      <ul class="flex flex-col gap-2" role="list">
+  <!-- ─── Bas de sidebar : réseaux sociaux + liens légaux ─────────────────── -->
+  <div class="mt-auto pt-4 flex-shrink-0 flex flex-col gap-2.5">
+    <!-- Liens réseaux sociaux — noms en clair.
+         Filet de séparation au-dessus : délimite la partie Projets de la
+         partie Réseaux sociaux (identique au filet des liens légaux). -->
+    <nav aria-label="Réseaux sociaux" class="pt-2.5 border-t border-greige-300/30">
+      <ul class="flex flex-col gap-1.5" role="list">
         {socialLinks.map((link) => (
           <li>
             <a
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              class="block font-sans text-[0.65rem] tracking-[0.2em] uppercase text-greige-300 hover:text-ivory transition-colors duration-400"
+              class="block font-sans text-xs tracking-[0.15em] uppercase text-greige-300 hover:text-anthracite-300 transition-colors duration-400"
               aria-label={link.label}
             >
               {link.name}
@@ -128,44 +128,68 @@ const socialLinks = [
       </ul>
     </nav>
 
-    <!-- Liens légaux -->
-    <nav aria-label="Liens légaux">
-      <ul class="space-y-1" role="list">
+    <!-- Liens légaux — très petit et discret, empreinte minimale -->
+    <nav aria-label="Liens légaux" class="pt-1.5 border-t border-greige-300/30">
+      <!-- Interlignes resserrés au maximum : 2px entre les liens -->
+      <ul class="flex flex-col gap-[2px] leading-none" role="list">
         <li>
           <a
             href={getLangUrl(lang, '/mentions-legales')}
-            class="text-[10px] font-sans text-greige-400 hover:text-greige-200 transition-colors duration-400 tracking-wide"
+            class="text-[0.55rem] leading-none font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide"
           >
-            {t.legal.mentions}
+            Mentions légales
           </a>
         </li>
         <li>
           <a
             href={getLangUrl(lang, '/politique-confidentialite')}
-            class="text-[10px] font-sans text-greige-400 hover:text-greige-200 transition-colors duration-400 tracking-wide"
+            class="text-[0.55rem] leading-none font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide"
           >
-            {t.legal.privacy}
+            Politique de confidentialité
           </a>
         </li>
         <li>
           <a
             href={getLangUrl(lang, '/cookies')}
-            class="text-[10px] font-sans text-greige-400 hover:text-greige-200 transition-colors duration-400 tracking-wide"
+            class="text-[0.55rem] leading-none font-sans text-greige-400 hover:text-anthracite-300 transition-colors duration-400 tracking-wide"
           >
-            {t.legal.cookies}
+            Cookies
           </a>
+        </li>
+        <li>
+          <p class="text-[0.55rem] leading-none font-sans text-greige-400">
+            © 2026 Marion Dériot
+          </p>
         </li>
       </ul>
     </nav>
-
-    <!-- Copyright -->
-    <p class="text-[10px] font-sans text-greige-400">
-      {t.legal.copyright(new Date().getFullYear())}
-    </p>
   </div>
 </aside>
 
 <style>
+  /* ── Lockup logo — la tagline fait exactement la largeur du nom ────────── */
+  .sidebar-logo {
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .sidebar-logo-name {
+    font-size: 1.75rem;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  /* Tagline : espacement standard, calibrée sur la largeur du nom */
+  .sidebar-logo-tagline {
+    margin-top: 0.45rem;
+    font-size: 0.54rem;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
   /* ── Scrollbar invisible sur la nav de la sidebar ─────────────────────── */
   .sidebar-nav {
     scrollbar-width: none;          /* Firefox */

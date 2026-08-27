@@ -77,6 +77,31 @@ function initAdmin() {
   var projects = [];
   var editing = null;
   var editGallery = [];
+  var uploadsInProgress = 0;
+
+  function setSaveBusy() {
+    var btn = document.getElementById('modal-save');
+    if (!btn) return;
+    if (uploadsInProgress > 0) {
+      btn.disabled = true;
+      btn.dataset.busy = '1';
+      btn.textContent = 'Chargement\u2026 (' + uploadsInProgress + ')';
+    } else if (btn.dataset.busy === '1') {
+      btn.dataset.busy = '';
+      btn.disabled = false;
+      btn.textContent = 'Sauvegarder';
+    }
+  }
+  function incUploads(n) { uploadsInProgress += n; setSaveBusy(); }
+  function decUploads() { uploadsInProgress = Math.max(0, uploadsInProgress - 1); setSaveBusy(); }
+
+  // Garantit au plus 2 images en preview (les suivantes basculent en galerie).
+  function normalizePreviews() {
+    var seen = 0;
+    editGallery.forEach(function (img) {
+      if (img.isPreview) { seen++; if (seen > 2) img.isPreview = false; }
+    });
+  }
 
   var CATS = { residential: 'Résidentiel', commercial: 'Commercial', hospitality: 'Hôtelier', other: 'Autre' };
 
@@ -192,10 +217,18 @@ function initAdmin() {
   }
 
   // ── Image URL ──────────────────────────────────────────────────────────────
+  // Cartes de la grille : recadrage propre (cover)
   function thumbUrl(img, w) {
     w = w || 200;
     if (!img || !img.url) return '';
     return img.url + '?w=' + w + '&h=' + w + '&fit=crop&auto=format&q=82';
+  }
+
+  // Galeries du modal : image ENTIÈRE, jamais coupée (fit=max + object-fit: contain)
+  function thumbContain(img, w) {
+    w = w || 320;
+    if (!img || !img.url) return '';
+    return img.url + '?w=' + w + '&fit=max&auto=format&q=82';
   }
 
   // ── Load Projects ──────────────────────────────────────────────────────────
@@ -245,9 +278,10 @@ function initAdmin() {
   function cardHtml(p) {
     var prev = (p.gallery || []).filter(function (i) {
       return i.isPreview;
-    }).slice(0, 3);
-    var imgs = prev.length ? prev : (p.gallery || []).slice(0, 2);
-    var cls = imgs.length >= 3 ? 'three' : imgs.length === 1 ? 'one' : '';
+    });
+    // Carte : exactement les 2 images de preview cote a cote (sinon les 2 premieres de la galerie)
+    var imgs = (prev.length ? prev : (p.gallery || [])).slice(0, 2);
+    var cls = imgs.length === 1 ? 'one' : '';
     var thumbs = imgs.length
       ? imgs
           .map(function (i) {
@@ -255,7 +289,7 @@ function initAdmin() {
           })
           .join('')
       : '<div class="ct"><div class="ct-empty">🖼️</div></div>';
-    var meta = [CATS[p.category], p.year].filter(Boolean).join(' · ');
+    var meta = [CATS[p.category], p.year, p.location, p.surface].filter(Boolean).join(' · ');
     var safeT = (p.title && p.title.fr || '').replace(/"/g, '&quot;');
     var dispFr = (p.title && p.title.fr) || '—';
     return (
@@ -308,8 +342,8 @@ function initAdmin() {
     editGallery = [];
     document.getElementById('f-title-fr').value = '';
     document.getElementById('f-title-en').value = '';
-    document.getElementById('f-category').value = 'residential';
-    document.getElementById('f-year').value = '';
+    document.getElementById('f-surface').value = '';
+    document.getElementById('f-location').value = '';
     openModal('Nouveau projet');
     renderGallery();
   }
@@ -320,15 +354,19 @@ function initAdmin() {
     });
     if (!editing) return;
     editGallery = (editing.gallery || []).slice();
+    normalizePreviews();
     document.getElementById('f-title-fr').value = (editing.title && editing.title.fr) || '';
     document.getElementById('f-title-en').value = (editing.title && editing.title.en) || '';
-    document.getElementById('f-category').value = editing.category || 'residential';
-    document.getElementById('f-year').value = editing.year || '';
+    document.getElementById('f-surface').value = editing.surface || '';
+    document.getElementById('f-location').value = editing.location || '';
     openModal('Modifier : ' + ((editing.title && editing.title.fr) || id));
     renderGallery();
   }
 
   function openModal(title) {
+    uploadsInProgress = 0;
+    var sb = document.getElementById('modal-save');
+    if (sb) { sb.dataset.busy = ''; sb.disabled = false; sb.textContent = 'Sauvegarder'; }
     document.getElementById('modal-title').textContent = title;
     var eb = document.getElementById('modal-error-bar');
     if (eb) {
@@ -358,6 +396,7 @@ function initAdmin() {
 
   // ── Gallery ────────────────────────────────────────────────────────────────
   function renderGallery() {
+    normalizePreviews();
     var previews = editGallery.filter(function (i) {
       return i.isPreview;
     });
@@ -367,7 +406,7 @@ function initAdmin() {
     var prevCount = previews.length;
     var badge = document.getElementById('preview-count-badge');
     if (badge) {
-      badge.textContent = prevCount + ' / 3';
+      badge.textContent = prevCount + ' / 2';
       badge.style.color = prevCount === 0 ? 'var(--color-greige-400)' : 'var(--color-accent)';
     }
     renderSection('gallery-preview', previews, true, prevCount);
@@ -375,69 +414,71 @@ function initAdmin() {
   }
 
   var ICO_STAR_ON =
-    '<svg width="13" height="13" viewBox="0 0 14 14" fill="var(--color-accent)" aria-hidden="true"><path d="M7 1l2.2 4.7h5.1l-4.1 3l1.6 4.9-4.8-3.5-4.8 3.5 1.6-4.9-4.1-3h5.1z"/></svg>';
+    '<svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M7 1l2.2 4.7h5.1l-4.1 3l1.6 4.9-4.8-3.5-4.8 3.5 1.6-4.9-4.1-3h5.1z"/></svg>';
   var ICO_STAR_OFF =
     '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M7 1l2.2 4.7h5.1l-4.1 3l1.6 4.9-4.8-3.5-4.8 3.5 1.6-4.9-4.1-3h5.1z"/></svg>';
   var ICO_TRASH =
     '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M1.5 4h11"/><path d="M5 4V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V4"/><path d="M2.5 4l.7 8.5h7.6l.7-8.5"/></svg>';
-  var ICO_GRIP =
-    '<svg width="9" height="13" viewBox="0 0 9 13" fill="currentColor" aria-hidden="true"><circle cx="2.5" cy="2" r="1.2"/><circle cx="6.5" cy="2" r="1.2"/><circle cx="2.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="6.5" r="1.2"/><circle cx="2.5" cy="11" r="1.2"/><circle cx="6.5" cy="11" r="1.2"/></svg>';
+  var ICO_UP =
+    '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l4-4 4 4"/></svg>';
+  var ICO_DOWN =
+    '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5l4 4 4-4"/></svg>';
 
   function renderSection(containerId, images, isPreview, totalPrev) {
     var grid = document.getElementById(containerId);
     if (!grid) return;
     grid.innerHTML = images
-      .map(function (img) {
+      .map(function (img, posInSection) {
         var gidx = editGallery.indexOf(img);
         if (img.isPending) {
           var pct = Math.round((img.progress || 0) * 100);
           return (
-            '<div class="gimg' +
+            '<div class="gcard' +
             (isPreview ? ' preview-on' : '') +
-            '" style="position:relative;display:flex;align-items:center;justify-content:center">' +
+            '"><div class="gcard-img">' +
             '<img src="' +
             img.localUrl +
-            '" alt="" style="width:100%;height:100%;object-fit:cover;display:block;opacity:.4;position:absolute;inset:0"/>' +
-            '<div class="gimg-upload-wrapper">' +
-            '<div style="width:70%;height:3px;background:rgba(255,255,255,.3);border-radius:2px;overflow:hidden"><div style="height:100%;width:' +
+            '" alt="" style="opacity:.4"/>' +
+            '<div class="gcard-upload-wrapper">' +
+            '<span style="font-size:10px;color:rgba(255,255,255,.92);letter-spacing:.08em;margin-bottom:5px;text-transform:uppercase">Chargement</span>' +
+            '<div style="width:74%;height:4px;background:rgba(255,255,255,.3);border-radius:2px;overflow:hidden"><div style="height:100%;width:' +
             pct +
             '%;background:white;transition:width 150ms ease-out;border-radius:2px"></div></div>' +
             '<span style="font-size:11px;color:rgba(255,255,255,.95);font-weight:600;letter-spacing:0.05em">' +
             pct +
             '%</span>' +
-            '</div>' +
+            '</div></div>' +
+            '<div class="gcard-bar"><span class="gcard-name">Envoi en cours…</span></div>' +
             '</div>'
           );
         }
-        var url = thumbUrl(img, 280);
-        var imgTag = url ? '<img src="' + url + '" alt="" loading="lazy"/>' : '<div style="width:100%;height:100%;background:var(--color-ivory)"></div>';
-        var canMove = isPreview || totalPrev < 3;
+        var url = thumbContain(img, 480);
+        var imgTag = url ? '<img src="' + url + '" alt="" loading="lazy"/>' : '';
+        var canMove = isPreview || totalPrev < 2;
         var moveTitle = isPreview ? 'Retirer des previews' : 'Marquer comme preview';
+        var fname = img.filename ? String(img.filename).replace(/"/g, '&quot;') : '';
+        var isFirst = posInSection === 0;
+        var isLast = posInSection === images.length - 1;
         return (
-          '<div class="gimg' +
+          '<div class="gcard' +
           (isPreview ? ' preview-on' : '') +
-          '" draggable="true" data-gidx="' +
-          gidx +
-          '">' +
+          '" draggable="true" data-gidx="' + gidx + '">' +
+          '<div class="gcard-img">' +
           imgTag +
-          '<div class="gimg-overlay">' +
-          '<button class="gimg-btn" data-action="move" data-gidx="' +
-          gidx +
-          '" title="' +
-          moveTitle +
-          '"' +
-          (canMove ? '' : ' disabled') +
-          '>' +
+          (isPreview ? '<span class="gcard-flag">Preview</span>' : '') +
+          '</div>' +
+          '<div class="gcard-bar">' +
+          '<span class="gcard-num" title="Ordre d’affichage sur le site">' + (gidx + 1) + '</span>' +
+          '<span class="gcard-name" title="' + fname + '">' + (fname || '—') + '</span>' +
+          '<div class="gcard-actions">' +
+          '<button class="gcard-act" data-action="up" data-gidx="' + gidx + '" title="Avancer dans l’ordre"' + (isFirst ? ' disabled' : '') + '>' + ICO_UP + '</button>' +
+          '<button class="gcard-act" data-action="down" data-gidx="' + gidx + '" title="Reculer dans l’ordre"' + (isLast ? ' disabled' : '') + '>' + ICO_DOWN + '</button>' +
+          '<button class="gcard-act" data-action="move" data-gidx="' + gidx + '" title="' + moveTitle + '"' + (canMove ? '' : ' disabled') +
+          (isPreview ? ' style="color:var(--color-accent)"' : '') + '>' +
           (isPreview ? ICO_STAR_ON : ICO_STAR_OFF) +
           '</button>' +
-          '<button class="gimg-btn" data-action="del" data-gidx="' +
-          gidx +
-          '" title="Supprimer">' +
-          ICO_TRASH +
-          '</button>' +
-          '</div>' +
-          (isPreview ? '' : '<span style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.8);pointer-events:none;opacity:0;transition:opacity 180ms" class="gimg-handle">' + ICO_GRIP + '</span>') +
-          '</div>'
+          '<button class="gcard-act" data-action="del" data-gidx="' + gidx + '" title="Supprimer">' + ICO_TRASH + '</button>' +
+          '</div></div></div>'
         );
       })
       .join('');
@@ -449,8 +490,27 @@ function initAdmin() {
         var gidx = parseInt(btn.dataset.gidx, 10);
         if (btn.dataset.action === 'move') togglePreview(gidx);
         if (btn.dataset.action === 'del') removeImage(gidx);
+        if (btn.dataset.action === 'up') nudgeImage(gidx, -1);
+        if (btn.dataset.action === 'down') nudgeImage(gidx, 1);
       });
     });
+  }
+
+  // Déplace une image d'un cran dans sa section (l'ordre global suit)
+  function nudgeImage(gidx, dir) {
+    var img = editGallery[gidx];
+    if (!img) return;
+    var sectionIdxs = [];
+    editGallery.forEach(function (x, i) {
+      if (!x.isPending && !!x.isPreview === !!img.isPreview) sectionIdxs.push(i);
+    });
+    var pos = sectionIdxs.indexOf(gidx);
+    var targetIdx = sectionIdxs[pos + dir];
+    if (targetIdx === undefined) return;
+    var tmp = editGallery[gidx];
+    editGallery[gidx] = editGallery[targetIdx];
+    editGallery[targetIdx] = tmp;
+    renderGallery();
   }
 
   function togglePreview(gidx) {
@@ -459,8 +519,8 @@ function initAdmin() {
     var cnt = editGallery.filter(function (i) {
       return i.isPreview;
     }).length;
-    if (!img.isPreview && cnt >= 3) {
-      toast('Maximum 3 images de preview. Retirez-en une d\'abord.', 'err');
+    if (!img.isPreview && cnt >= 2) {
+      toast('Maximum 2 images de preview. Retirez-en une d\'abord.', 'err');
       return;
     }
     img.isPreview = !img.isPreview;
@@ -485,7 +545,7 @@ function initAdmin() {
 
   function initDnD(grid, isPreviewSection) {
     var dragFrom = null;
-    grid.querySelectorAll('.gimg[draggable="true"]').forEach(function (item) {
+    grid.querySelectorAll('.gcard[draggable="true"]').forEach(function (item) {
       item.addEventListener('dragstart', function (e) {
         dragFrom = parseInt(item.dataset.gidx, 10);
         item.classList.add('dragging');
@@ -493,14 +553,14 @@ function initAdmin() {
       });
       item.addEventListener('dragend', function () {
         item.classList.remove('dragging');
-        grid.querySelectorAll('.gimg').forEach(function (i) {
+        grid.querySelectorAll('.gcard').forEach(function (i) {
           i.classList.remove('drag-over');
         });
       });
       item.addEventListener('dragover', function (e) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
-        grid.querySelectorAll('.gimg').forEach(function (i) {
+        grid.querySelectorAll('.gcard').forEach(function (i) {
           i.classList.remove('drag-over');
         });
         item.classList.add('drag-over');
@@ -559,9 +619,9 @@ function initAdmin() {
       var curPrev = editGallery.filter(function (i) {
         return i.isPreview && !i.isPending;
       }).length;
-      var remain = 3 - curPrev;
+      var remain = 2 - curPrev;
       if (remain <= 0) {
-        toast('Maximum 3 images de preview.', 'err');
+        toast('Maximum 2 images de preview.', 'err');
         return;
       }
       if (files.length > remain) {
@@ -575,8 +635,7 @@ function initAdmin() {
       if (!id) return;
     }
 
-    var savBtn = document.getElementById('modal-save');
-    savBtn.disabled = true;
+    incUploads(files.length);
 
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
@@ -592,21 +651,36 @@ function initAdmin() {
         fd.append('image', file);
         fd.append('isPreview', isPreview ? 'true' : 'false');
 
-        await uploadXHR('/api/admin/projects/' + editing._id + '/upload', fd, function (pct) {
+        var up = await uploadXHR('/api/admin/projects/' + editing._id + '/upload', fd, function (pct) {
           var img = editGallery.find(function (x) {
             return x._key === pendingKey;
           });
-          if (img) img.progress = pct / 100;
+          if (img) { img.progress = pct / 100; renderGallery(); }
         });
 
+        // Remplacer l'image en attente par l'image reelle, SANS recharger depuis le serveur
+        // (eviter d'ecraser les suppressions / changements locaux non encore sauvegardes).
+        var realItem = {
+          _type: 'image',
+          _key: 'k' + Date.now() + Math.random().toString(36).slice(2, 8),
+          asset: { _type: 'reference', _ref: up.assetId },
+          alt: { fr: '', en: '' },
+          isPreview: isPreview,
+          url: up.url,
+        };
         var idx = editGallery.findIndex(function (x) {
           return x._key === pendingKey;
         });
-        if (idx !== -1) editGallery.splice(idx, 1);
+        if (idx !== -1) editGallery.splice(idx, 1, realItem);
+        else editGallery.push(realItem);
         URL.revokeObjectURL(localUrl);
-
-        await refreshEditing();
-        toast(isPreview ? 'Image de preview ajoutée.' : 'Image ajoutée à la galerie.');
+        normalizePreviews();
+        renderGallery();
+        if (up && up.downgraded) {
+          toast('2 images de preview maximum — ajoutee a la galerie.');
+        } else {
+          toast(isPreview ? 'Image de preview ajoutee.' : 'Image ajoutee a la galerie.');
+        }
       } catch (e) {
         var idx2 = editGallery.findIndex(function (x) {
           return x._key === pendingKey;
@@ -615,10 +689,10 @@ function initAdmin() {
         URL.revokeObjectURL(localUrl);
         renderGallery();
         toast('Erreur : ' + e.message, 'err');
+      } finally {
+        decUploads();
       }
     }
-
-    savBtn.disabled = false;
   }
 
   async function refreshEditing() {
@@ -639,18 +713,29 @@ function initAdmin() {
 
   async function saveProject(silent) {
     var titleFr = document.getElementById('f-title-fr').value.trim().toUpperCase();
-    var titleEn = document.getElementById('f-title-en').value.trim().toUpperCase();
-    var category = document.getElementById('f-category').value;
-    var yearRaw = document.getElementById('f-year').value;
-    var year = yearRaw ? parseInt(yearRaw, 10) : null;
+    // Version EN supprimee du site : on reflete le titre FR pour conserver le modele de donnees (slug.en).
+    var titleEn = titleFr;
+    var enField = document.getElementById('f-title-en');
+    if (enField) enField.value = titleEn;
+    var surface = document.getElementById('f-surface').value.trim();
+    var location = document.getElementById('f-location').value.trim();
     var errBar = document.getElementById('modal-error-bar');
     errBar.style.display = 'none';
     errBar.textContent = '';
 
-    if (!titleFr || !titleEn) {
-      errBar.textContent = 'Les titres FR et EN sont obligatoires.';
+    if (!titleFr) {
+      errBar.textContent = 'Le titre du projet est obligatoire.';
       errBar.style.display = '';
       return null;
+    }
+
+    if (!silent) {
+      var prevCnt = editGallery.filter(function (i) { return i.isPreview && !i.isPending; }).length;
+      if (prevCnt < 2) {
+        errBar.textContent = 'Choisissez 2 images de preview (icone etoile) avant de sauvegarder — elles structurent l\'affichage du projet.';
+        errBar.style.display = '';
+        return null;
+      }
     }
 
     var savBtn = document.getElementById('modal-save');
@@ -659,8 +744,9 @@ function initAdmin() {
 
     try {
       if (!editing._id) {
-        var body = { title: { fr: titleFr, en: titleEn }, category: category };
-        if (year) body.year = year;
+        var body = { title: { fr: titleFr, en: titleEn } };
+        if (surface) body.surface = surface;
+        if (location) body.location = location;
         var doc = await api('POST', '/api/admin/projects', body);
         editing._id = doc._id;
         if (!silent) toast('Projet créé.');
@@ -678,10 +764,11 @@ function initAdmin() {
       } else {
         await api('PATCH', '/api/admin/projects/' + editing._id, {
           title: { fr: titleFr, en: titleEn },
-          category: category,
-          year: year,
+          surface: surface,
+          location: location,
         });
-        var galToSave = editGallery.map(function (img) {
+        normalizePreviews();
+      var galToSave = editGallery.map(function (img) {
           var o = {};
           Object.keys(img).forEach(function (k) {
             if (k !== 'url' && k !== 'isPending' && k !== 'localUrl' && k !== 'progress') o[k] = img[k];
