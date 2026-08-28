@@ -5,6 +5,7 @@
 import type { APIRoute } from 'astro';
 import {
   checkAdminCode,
+  diagnostiquerCode,
   createSessionToken,
   buildSetCookieHeader,
 } from '@/lib/admin-auth';
@@ -20,9 +21,13 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   if (!body.code || !checkAdminCode(body.code)) {
+    // DIAGNOSTIC TEMPORAIRE — à retirer une fois la connexion rétablie.
+    const diag = diagnostiquerCode(body.code ?? '');
+    console.error('[admin/auth] echec de connexion', diag);
+
     // Délai intentionnel pour limiter le brute-force
     await new Promise((r) => setTimeout(r, 500));
-    return json({ error: 'Code incorrect' }, 401);
+    return json({ error: 'Code incorrect', diag }, 401);
   }
 
   const token = createSessionToken();

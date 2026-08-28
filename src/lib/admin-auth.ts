@@ -26,6 +26,35 @@ function getAdminCode(): string {
 }
 
 /**
+ * DIAGNOSTIC TEMPORAIRE — à retirer une fois la connexion admin rétablie.
+ *
+ * Ne révèle jamais le code : uniquement d'où il est lu, sa longueur, et en quoi
+ * il diffère de ce qui a été soumis. Suffisant pour distinguer les trois causes
+ * habituelles d'un 401 en production : variable absente du build, valeur collée
+ * avec des guillemets ou un espace, ou simple erreur de frappe.
+ */
+export function diagnostiquerCode(soumis: string): Record<string, unknown> {
+  const parImportMeta = import.meta.env.ADMIN_ACCESS_CODE;
+  const parProcess = process.env.ADMIN_ACCESS_CODE;
+  const attendu = parImportMeta ?? parProcess;
+  const encadre = (v: string | undefined) =>
+    !!v && /^["'`]|["'`]$/.test(v.trim());
+  return {
+    source: parImportMeta ? 'import.meta.env' : parProcess ? 'process.env' : 'ABSENT',
+    presentDansImportMeta: !!parImportMeta,
+    presentDansProcessEnv: !!parProcess,
+    longueurAttendue: attendu ? attendu.length : 0,
+    longueurAttendueApresTrim: attendu ? attendu.trim().length : 0,
+    longueurRecue: soumis.length,
+    longueurRecueApresTrim: soumis.trim().length,
+    valeurAttendueEncadreeDeGuillemets: encadre(attendu),
+    identiqueApresTrim: !!attendu && attendu.trim() === soumis.trim(),
+    premiersCaracteresAttendus: attendu ? attendu.trim().slice(0, 2) : null,
+    premiersCaracteresRecus: soumis.trim().slice(0, 2),
+  };
+}
+
+/**
  * Vérifie si le code soumis correspond au code admin.
  */
 export function checkAdminCode(submitted: string): boolean {

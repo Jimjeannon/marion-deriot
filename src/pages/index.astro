@@ -16,13 +16,31 @@ import { getDict } from '@/i18n';
 
 const t = getDict('fr');
 
-const images = [
+/**
+ * Une diapositive de la landing.
+ *
+ * `mobileSrc` permet d'afficher une autre photo sous 768 px sans toucher à
+ * l'ordre du diaporama : en portrait, le recadrage « cover » remonte le sujet
+ * dans l'angle haut-gauche, là où se trouve le nom « Marion Dériot ». Les deux
+ * premières images sont donc permutées sur mobile pour préserver le contraste
+ * du titre, tout en gardant l'ordre voulu sur desktop.
+ */
+type LandingImage = {
+  src: string;
+  alt: string;
+  mobileSrc?: string;
+  fit?: 'cover' | 'contain';
+};
+
+const images: LandingImage[] = [
   {
     src: '/images/landing/01-cuisine-verte.webp',
+    mobileSrc: '/images/landing/02-lavoisier.webp',
     alt: 'Cuisine sur mesure — îlot central, lustre rouge, Agence Marion Dériot architecte d\'intérieur',
   },
   {
     src: '/images/landing/02-lavoisier.webp',
+    mobileSrc: '/images/landing/01-cuisine-verte.webp',
     alt: 'Lavoisier — réalisation Agence Marion Dériot architecte d\'intérieur',
   },
   {
@@ -43,8 +61,10 @@ const images = [
 >
   <!-- Préchargement : toutes les images sont au-dessus du fold sur desktop -->
   <Fragment slot="head">
+    {/* Les deux premières sont candidates au LCP : l'une sur desktop, l'autre sur mobile. */}
     <link rel="preload" as="image" href={images[0].src} fetchpriority="high" />
-    {images.slice(1).map((img) => (
+    <link rel="preload" as="image" href={images[0].mobileSrc ?? images[1].src} fetchpriority="high" />
+    {images.slice(2).map((img) => (
       <link rel="preload" as="image" href={img.src} fetchpriority="low" />
     ))}
     <script is:inline define:vars={{ firstSlideSrc: images[0].src }}>
@@ -71,7 +91,7 @@ const images = [
         <div
           class={`slide${i === 0 ? ' slide--on' : ''}${img.fit === 'contain' ? ' slide--contain' : ''}`}
           data-index={i}
-          style={`background-image: url('${img.src}')`}
+          style={`--slide-desktop: url('${img.src}'); --slide-mobile: url('${img.mobileSrc ?? img.src}')`}
           role="img"
           aria-label={img.alt}
         />
@@ -159,6 +179,7 @@ const images = [
   .slide {
     position: absolute;
     inset: 0;
+    background-image: var(--slide-desktop);
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
@@ -201,6 +222,7 @@ const images = [
      centre le cadrage. Le défilement automatique reste inchangé. */
   @media (max-width: 767px) {
     .slide {
+      background-image: var(--slide-mobile);
       background-size: cover;
       background-position: center center;
     }
