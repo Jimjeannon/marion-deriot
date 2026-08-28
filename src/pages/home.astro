@@ -58,6 +58,10 @@ const M = {
   lavoisier: {
     src: img01Lavoisier,
     alt: "Salon du projet Lavoisier — double anneau de métal noir devant l'escalier suspendu en béton",
+    // Photo quasi carrée (1198x1280) dans une cellule 2:3 : l'anneau, large de
+    // 924 px, exigerait 1386 px de haut pour tenir entier — la photo n'en fait
+    // que 1280. Ses bords latéraux sont donc rognés, et c'est assumé : les deux
+    // photos d'une diapositive doivent garder rigoureusement la même hauteur.
     slug: 'lavoisier', title: 'LAVOISIER',
   },
   vertbois: {
@@ -153,6 +157,15 @@ const ogImage = new URL('/og-home.jpg', Astro.site).href;
 
 /** URL absolue d'une image, pour les données structurées. */
 const abs = (src: string) => new URL(src, Astro.site).href;
+
+/**
+ * Rendu à la demande.
+ *
+ * La barre latérale liste les projets via getAllProjects(), qui interroge
+ * Sanity. En page pré-rendue cette liste serait figée au moment du build : un
+ * projet ajouté depuis /admin n'apparaîtrait qu'au déploiement suivant.
+ */
+export const prerender = false;
 ---
 
 <MainLayout
@@ -175,7 +188,13 @@ const abs = (src: string) => new URL(src, Astro.site).href;
     'image': [abs(img01Lavoisier.src), abs(img04Breteuil.src), abs(img11Cambaceres.src)],
     'founder': {
       '@type': 'Person',
-      'name': 'Marion Dériot',
+      'name': 'Marion Renaudin Dériot',
+      // Les variantes du nom : « Renaudin » est le nom de jeune fille, sous
+      // lequel une part de la clientèle et des confrères la connaissent.
+      // Déclaré ici, il rattache sans ambiguïté ces recherches à la même personne.
+      'alternateName': ['Marion Dériot', 'Marion Renaudin', 'Marion Renaudin Dériot'],
+      'familyName': 'Dériot',
+      'givenName': 'Marion',
       'jobTitle': "Architecte d'intérieur",
       'alumniOf': { '@type': 'CollegeOrUniversity', 'name': 'École Camondo' },
     },
@@ -555,7 +574,7 @@ const abs = (src: string) => new URL(src, Astro.site).href;
   // ── Diaporama home ───────────────────────────────────────────────────────────
   // Cadence : 1ère diapo plus courte (on comprend tout de suite qu'il y a un
   // défilement), puis un délai STRICTEMENT identique entre chaque diapo.
-  const frames = Array.from(document.querySelectorAll<HTMLElement>('.hs-frame'));
+  let frames: HTMLElement[] = [];
   const FIRST_DELAY = 2500;
   const INTERVAL    = 4500;
   const FADE_MS     = 1400;
@@ -625,13 +644,11 @@ const abs = (src: string) => new URL(src, Astro.site).href;
     }
   }
 
-  startSlideshow();
-
   // ── Diaporama mobile — chaque image défile une par une ────────────────────────
   // Ensemble de diapos distinct (une image chacune), actif uniquement sous 768px
   // via le CSS. Le cycler tourne en continu : sur desktop, .hsm est masqué donc
   // invisible ; sur mobile, il pilote le défilement image par image.
-  const mSlides = Array.from(document.querySelectorAll<HTMLElement>('.hsm-slide'));
+  let mSlides: HTMLElement[] = [];
   let mCurrent = 0;
   let mTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -668,21 +685,37 @@ const abs = (src: string) => new URL(src, Astro.site).href;
     }
   }
 
-  startMobileSlideshow();
+  /**
+   * (Re)démarrage des deux diaporamas.
+   *
+   * Les View Transitions remplacent le corps de la page à chaque navigation.
+   * Les éléments mémorisés au premier chargement deviennent alors des noeuds
+   * détachés du document : basculer leurs classes ne produit plus rien à
+   * l'écran. C'est ce qui figeait le diaporama sur la première diapositive au
+   * retour depuis une fiche projet — les minuteries tournaient bien, mais dans
+   * le vide. On réinterroge donc le DOM à chaque chargement de page.
+   */
+  function stopSlideshows() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (mTimer) { clearTimeout(mTimer); mTimer = null; }
+  }
 
-  // Redémarrer le diaporama quand on revient sur cette page (View Transitions)
-  document.addEventListener('astro:after-swap', () => {
-    // Reset et redémarrage des diaporamas
-    current = 0;
-    mCurrent = 0;
-    if (timer) clearTimeout(timer);
-    if (mTimer) clearTimeout(mTimer);
+  function initSlideshows() {
+    stopSlideshows();
+
+    frames = Array.from(document.querySelectorAll<HTMLElement>('.hs-frame'));
+    mSlides = Array.from(document.querySelectorAll<HTMLElement>('.hsm-slide'));
+    if (!frames.length && !mSlides.length) return; // page sans diaporama
+
+    // Repartir de la diapositive réellement affichée par le serveur.
+    current = Math.max(0, frames.findIndex((el) => el.classList.contains('hs-frame--active')));
+    mCurrent = Math.max(0, mSlides.findIndex((el) => el.classList.contains('hsm-slide--active')));
+
     startSlideshow();
     startMobileSlideshow();
-  });
+  }
 
-  document.addEventListener('astro:before-preparation', () => {
-    if (timer) clearTimeout(timer);
-    if (mTimer) clearTimeout(mTimer);
-  });
+  // `astro:page-load` couvre le premier chargement ET chaque navigation.
+  document.addEventListener('astro:page-load', initSlideshows);
+  document.addEventListener('astro:before-preparation', stopSlideshows);
 </script>

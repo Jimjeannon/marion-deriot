@@ -27,14 +27,19 @@ export const fr = {
   // ─── Homepage ────────────────────────────────────────────────────────────
   home: {
     /** Titre de la landing (/) — distinct de la home pour éviter les titres dupliqués. */
-    title: 'Marion Dériot — Architecte d\'intérieur & Design',
-    /** Titre de la home (/home) — 57 caractères, cible SEO locale. */
-    metaTitle: 'Architecte d\'intérieur à Paris & Boulogne — Marion Dériot',
-    /** 154 caractères — dans la fenêtre 150-160 recommandée. */
+    title: 'Marion Renaudin Dériot — Architecte d\'intérieur & Design',
+    /**
+     * Titre de la home (/home) — 55 caractères, sous la limite d'affichage de
+     * Google (~60). Le nom de jeune fille y figure : « Renaudin » est le nom
+     * sous lequel une partie de la clientèle et des confrères la connaissent,
+     * et une recherche sur ce nom doit mener ici.
+     */
+    metaTitle: 'Architecte d\'intérieur à Paris — Marion Renaudin Dériot',
+    /** 152 caractères — dans la fenêtre 150-160 recommandée. */
     metaDescription:
-      'Marion Dériot, architecte d\'intérieur diplômée de l\'École Camondo. Rénovation et agencements sur mesure à Paris, Boulogne-Billancourt et en Île-de-France.',
+      'Marion Renaudin Dériot, architecte d\'intérieur diplômée Camondo. Rénovation et agencements sur mesure à Paris, Boulogne-Billancourt et en Île-de-France.',
     /** h1 de la home — lu par les lecteurs d'écran, non affiché. */
-    h1: 'Marion Dériot, architecte d\'intérieur à Paris et Boulogne-Billancourt',
+    h1: 'Marion Renaudin Dériot, architecte d\'intérieur à Paris et Boulogne-Billancourt',
     /** Libellé du diaporama pour les technologies d'assistance. */
     slideshowLabel: 'Réalisations — matières et atmosphères',
     /** Lien de repli quand l'image ne renvoie pas vers une fiche projet. */
@@ -45,7 +50,7 @@ export const fr = {
   // ─── Projets ─────────────────────────────────────────────────────────────
   projects: {
     title: 'Projets',
-    metaTitle: 'Projets — Marion Dériot Architecte d\'intérieur',
+    metaTitle: 'Projets — Marion Renaudin Dériot, architecte d\'intérieur',
     metaDescription:
       'Projets de rénovation sur mesure, menuiseries sur mesure et aménagement intérieur — Agence Marion Dériot, architecte d\'intérieur diplômée Camondo, Paris et Île-de-France.',
     viewProject: 'Voir le projet',

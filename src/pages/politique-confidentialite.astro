@@ -1,5 +1,14 @@
 ---
 import MainLayout from '@/layouts/MainLayout.astro';
+
+/**
+ * Rendu à la demande.
+ *
+ * La barre latérale liste les projets via getAllProjects(), qui interroge
+ * Sanity. En page pré-rendue cette liste serait figée au moment du build : un
+ * projet ajouté depuis /admin n'apparaîtrait qu'au déploiement suivant.
+ */
+export const prerender = false;
 ---
 
 <MainLayout

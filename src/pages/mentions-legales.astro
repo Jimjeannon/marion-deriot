@@ -1,5 +1,14 @@
 ---
 import MainLayout from '@/layouts/MainLayout.astro';
+
+/**
+ * Rendu à la demande.
+ *
+ * La barre latérale liste les projets via getAllProjects(), qui interroge
+ * Sanity. En page pré-rendue cette liste serait figée au moment du build : un
+ * projet ajouté depuis /admin n'apparaîtrait qu'au déploiement suivant.
+ */
+export const prerender = false;
 ---
 
 <MainLayout
@@ -16,7 +25,8 @@ import MainLayout from '@/layouts/MainLayout.astro';
       <section>
         <h2 class="font-sans text-xs tracking-[0.2em] uppercase text-greige-400 mb-4">Éditeur du site</h2>
         <p>Agence Marion Dériot</p>
-        <p>Architecte d'intérieur — SIRET : [à compléter]</p>
+        <p>Architecte d'intérieur</p>
+        <p>SIRET : 907 841 209 00014</p>
         <p>Boulogne-Billancourt, 92100 — France</p>
         <p>
           <a href="mailto:marionderiot.archi@gmail.com" class="hover:text-accent transition-colors">
@@ -27,8 +37,10 @@ import MainLayout from '@/layouts/MainLayout.astro';
 
       <section>
         <h2 class="font-sans text-xs tracking-[0.2em] uppercase text-greige-400 mb-4">Hébergement</h2>
-        <p>Vercel Inc. — 340 Pine Street, Suite 701, San Francisco, CA 94104, USA</p>
-        <p>CDN : région Europe (CDG) — <a href="https://vercel.com" class="hover:text-accent transition-colors" target="_blank" rel="noopener noreferrer">vercel.com</a></p>
+        <p>Netlify, Inc. — 101 2nd Street, San Francisco, CA 94105, États-Unis</p>
+        <p>
+          <a href="https://www.netlify.com" class="hover:text-accent transition-colors" target="_blank" rel="noopener noreferrer">netlify.com</a>
+        </p>
       </section>
 
       <section>
@@ -42,7 +54,12 @@ import MainLayout from '@/layouts/MainLayout.astro';
 
       <section>
         <h2 class="font-sans text-xs tracking-[0.2em] uppercase text-greige-400 mb-4">Crédits photographiques</h2>
-        <p>[À compléter — photographes des projets]</p>
+        <p>Photographies des projets : Philippe Harden.</p>
+        <p>Projet Lavoisier : Isabelle Teillard d'Eyry.</p>
+        <p class="text-greige-400">
+          Les photographies restent la propriété de leurs auteurs et ne peuvent être
+          reproduites sans leur autorisation.
+        </p>
       </section>
     </div>
   </div>
