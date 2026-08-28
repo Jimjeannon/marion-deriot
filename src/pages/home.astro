@@ -34,7 +34,8 @@ const pageTitle = t.home.metaTitle;
 const pageDescription = t.home.metaDescription;
 
 /**
- * Les 12 images de la home, dans l'ordre du schéma de rendu validé par la cliente.
+ * Les 12 images de la home. La numérotation est celle de la planche de la
+ * cliente ; l'ordre de défilement, lui, est défini plus bas dans `frames`.
  *
  *   1 Lavoisier          2 Vertbois      |  3 Bourdonnais      4 Breteuil
  *   5 projet non publié  6 CDG           |  7 Square du Roule  8 Square du Roule
@@ -123,13 +124,27 @@ const M = {
 
 /**
  * Frames du diaporama — 6 diapositives de 2 images, répartition 50/50.
+ *
+ * L'ordre ci-dessous est celui du défilement voulu par la cliente, arrêté en
+ * regardant le rendu réel. Il ne suit pas la numérotation de la planche : les
+ * diapositives 2 et 3 y sont permutées, de même que les 4 et 5.
+ *
+ *   1. Lavoisier + Vertbois          (planche 1-2)
+ *   2. Projet non publié + CDG       (planche 5-6)
+ *   3. Bourdonnais + Breteuil        (planche 3-4)
+ *   4. Hervieu + Rebeval             (planche 9-10)
+ *   5. Square du Roule x2            (planche 7-8)
+ *   6. Cambacérès + Vaucresson       (planche 11-12)
+ *
+ * Le diaporama mobile en découle directement (`mobileImages`), tout comme
+ * l'ordre des images dans les données structurées ImageGallery.
  */
 const frames: { images: HomeImage[] }[] = [
   { images: [M.lavoisier, M.vertbois] },
-  { images: [M.bourdonnais, M.breteuil] },
   { images: [M.quartzite, M.cdg] },
-  { images: [M.rouleA, M.rouleB] },
+  { images: [M.bourdonnais, M.breteuil] },
   { images: [M.hervieu, M.rebeval] },
+  { images: [M.rouleA, M.rouleB] },
   { images: [M.cambaceres, M.vaucresson] },
 ];
 
