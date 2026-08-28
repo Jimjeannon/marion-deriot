@@ -732,4 +732,15 @@ export const prerender = false;
   // `astro:page-load` couvre le premier chargement ET chaque navigation.
   document.addEventListener('astro:page-load', initSlideshows);
   document.addEventListener('astro:before-preparation', stopSlideshows);
+
+  /*
+   * Amorçage direct, en plus de l'écouteur ci-dessus.
+   *
+   * Ce script est un module : son exécution est différée et peut intervenir
+   * APRÈS l'émission de `astro:page-load`. L'écouteur est alors posé trop
+   * tard, personne ne le déclenche, et le diaporama reste sur la première
+   * image. `initSlideshows` commence par tout arrêter : l'appeler deux fois
+   * est sans effet de bord.
+   */
+  initSlideshows();
 </script>

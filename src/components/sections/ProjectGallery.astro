@@ -466,119 +466,196 @@ const metaLine = metaParts.join(' · ');
 
 {hasGallery && images.length > 0 && (
   <script>
-  (function initGallery() {
-    const stage    = document.getElementById('pg-stage');
-    const prevBtn  = document.getElementById('pg-prev');
-    const nextBtn  = document.getElementById('pg-next');
-    const counter  = document.getElementById('pg-counter');
-    const zonePrev = document.getElementById('pg-zone-prev');
-    const zoneNext = document.getElementById('pg-zone-next');
-    if (!stage) return;
-
-    // Deux jeux de diapositives : paires (desktop) / une image (mobile).
-    const pairsEls   = Array.from(stage.querySelectorAll('.pg-pair'));
-    const singlesEls = Array.from(stage.querySelectorAll('.pg-single'));
-    const mq = window.matchMedia('(max-width: 767px)');
-
-    // Vue courante : liste d'éléments + classe active associée
-    let isMobile = mq.matches;
-    let slides   = isMobile ? singlesEls : pairsEls;
-    let cls      = isMobile ? 'pg-single--active' : 'pg-pair--active';
-    let total    = slides.length || 1;
-    let current  = 0;
-
-    function updateUI() {
-      if (counter) counter.innerHTML = `${current + 1}&thinsp;/&thinsp;${total}`;
-      if (prevBtn) prevBtn.disabled = (current === 0);
-      if (nextBtn) nextBtn.disabled = (current === total - 1);
-      if (zonePrev) zonePrev.hidden = (current === 0);
-      if (zoneNext) zoneNext.hidden = (current === total - 1);
-    }
-
-    function goTo(idx) {
-      const next = Math.max(0, Math.min(idx, total - 1));
-      if (next === current) return;
-
-      slides[current].classList.remove(cls);
-      slides[current].setAttribute('aria-hidden', 'true');
-
-      slides[next].classList.add(cls);
-      slides[next].setAttribute('aria-hidden', 'false');
-
-      current = next;
-      updateUI();
-    }
-
-    /* Bascule desktop <-> mobile : on conserve l'image affichée.
-       Paire n <-> images 2n et 2n+1. */
-    function switchMode(toMobile) {
-      const imageIndex = toMobile ? current * 2 : Math.floor(current / 2);
-
-      slides.forEach((el) => {
-        el.classList.remove(cls);
-        el.setAttribute('aria-hidden', 'true');
-      });
-
-      isMobile = toMobile;
-      slides   = toMobile ? singlesEls : pairsEls;
-      cls      = toMobile ? 'pg-single--active' : 'pg-pair--active';
-      total    = slides.length || 1;
-      current  = Math.max(0, Math.min(imageIndex, total - 1));
-
-      slides[current]?.classList.add(cls);
-      slides[current]?.setAttribute('aria-hidden', 'false');
-      updateUI();
-    }
-
-    mq.addEventListener('change', (e) => switchMode(e.matches));
-
-    // État initial cohérent si la page s'ouvre en mobile
-    if (isMobile) {
-      pairsEls.forEach((el) => {
-        el.classList.remove('pg-pair--active');
-        el.setAttribute('aria-hidden', 'true');
-      });
-      singlesEls[0]?.classList.add('pg-single--active');
-      singlesEls[0]?.setAttribute('aria-hidden', 'false');
-    }
-
-    prevBtn?.addEventListener('click', () => goTo(current - 1));
-    nextBtn?.addEventListener('click', () => goTo(current + 1));
-    zonePrev?.addEventListener('click', () => goTo(current - 1));
-    zoneNext?.addEventListener('click', () => goTo(current + 1));
-
-    // Clavier — flèches horizontales et verticales
-    document.addEventListener('keydown', (e) => {
-      if (e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA') return;
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); goTo(current + 1); }
-      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp'   || e.key === 'PageUp'  ) { e.preventDefault(); goTo(current - 1); }
-    });
-
-    // Swipe mobile — horizontal prioritaire, vertical accepté
-    let touchX = 0;
-    let touchY = 0;
-    stage.addEventListener('touchstart', (e) => {
-      touchX = e.touches[0].clientX;
-      touchY = e.touches[0].clientY;
-    }, { passive: true });
-    stage.addEventListener('touchend', (e) => {
-      const dx = touchX - e.changedTouches[0].clientX;
-      const dy = touchY - e.changedTouches[0].clientY;
-      const threshold = 48;
-      if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > threshold) {
-        goTo(dx > 0 ? current + 1 : current - 1);
-      } else if (Math.abs(dy) > threshold) {
-        goTo(dy > 0 ? current + 1 : current - 1);
+  /*
+   * Galerie projet — navigation au clic, au clavier et au swipe.
+   *
+   * Ce script est volontairement en JavaScript simple, sans annotation de
+   * type : place dans une expression conditionnelle du gabarit, Astro le
+   * traite comme un script « inline » et le sert tel quel, sans le compiler.
+   * La moindre syntaxe TypeScript y casserait toute la galerie.
+   *
+   * Les View Transitions remplacent le corps de la page a chaque navigation,
+   * mais ce script, lui, n'est pas rejoue : les elements mesures au premier
+   * chargement deviennent des noeuds detaches du document. Les fleches du
+   * projet suivant etaient donc bien cliquees, mais elles pilotaient la page
+   * precedente — d'ou une galerie qui paraissait figee des le deuxieme projet.
+   *
+   * On remonte donc tout a chaque `astro:page-load`, apres avoir demonte
+   * l'instance precedente : les ecouteurs poses sur `document` et sur le
+   * media query survivent a la navigation et s'accumuleraient autrement
+   * (deux projets visites = deux images avancees par appui sur une fleche).
+   */
+  (function () {
+    function teardownGallery() {
+      if (window.__pgTeardown) {
+        window.__pgTeardown();
+        window.__pgTeardown = null;
       }
-    }, { passive: true });
+    }
 
-    // Bloquer le scroll du body — la galerie est plein écran, sans défilement
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('astro:before-preparation', () => {
+    function initGallery() {
+      teardownGallery();
+
+      // Etat neutre : la page suivante n'a pas forcement de galerie.
       document.body.style.overflow = '';
-    }, { once: true });
 
-    updateUI();
+      var stage = document.getElementById('pg-stage');
+      if (!stage) return;
+
+      var prevBtn  = document.getElementById('pg-prev');
+      var nextBtn  = document.getElementById('pg-next');
+      var counter  = document.getElementById('pg-counter');
+      var zonePrev = document.getElementById('pg-zone-prev');
+      var zoneNext = document.getElementById('pg-zone-next');
+
+      // Deux jeux de diapositives : paires (desktop) / une image (mobile).
+      var pairsEls   = Array.prototype.slice.call(stage.querySelectorAll('.pg-pair'));
+      var singlesEls = Array.prototype.slice.call(stage.querySelectorAll('.pg-single'));
+      var mq = window.matchMedia('(max-width: 767px)');
+
+      // Vue courante : liste d'elements + classe active associee
+      var isMobile = mq.matches;
+      var slides   = isMobile ? singlesEls : pairsEls;
+      var cls      = isMobile ? 'pg-single--active' : 'pg-pair--active';
+      var total    = slides.length || 1;
+      var current  = 0;
+
+      function updateUI() {
+        if (counter) counter.innerHTML = (current + 1) + '&thinsp;/&thinsp;' + total;
+        if (prevBtn) prevBtn.disabled = (current === 0);
+        if (nextBtn) nextBtn.disabled = (current === total - 1);
+        if (zonePrev) zonePrev.hidden = (current === 0);
+        if (zoneNext) zoneNext.hidden = (current === total - 1);
+      }
+
+      function goTo(idx) {
+        var next = Math.max(0, Math.min(idx, total - 1));
+        if (next === current) return;
+
+        slides[current].classList.remove(cls);
+        slides[current].setAttribute('aria-hidden', 'true');
+
+        slides[next].classList.add(cls);
+        slides[next].setAttribute('aria-hidden', 'false');
+
+        current = next;
+        updateUI();
+      }
+
+      /* Bascule desktop <-> mobile : on conserve l'image affichee.
+         Paire n <-> images 2n et 2n+1. */
+      function switchMode(toMobile) {
+        var imageIndex = toMobile ? current * 2 : Math.floor(current / 2);
+
+        slides.forEach(function (el) {
+          el.classList.remove(cls);
+          el.setAttribute('aria-hidden', 'true');
+        });
+
+        isMobile = toMobile;
+        slides   = toMobile ? singlesEls : pairsEls;
+        cls      = toMobile ? 'pg-single--active' : 'pg-pair--active';
+        total    = slides.length || 1;
+        current  = Math.max(0, Math.min(imageIndex, total - 1));
+
+        if (slides[current]) {
+          slides[current].classList.add(cls);
+          slides[current].setAttribute('aria-hidden', 'false');
+        }
+        updateUI();
+      }
+
+      function onMqChange(e) { switchMode(e.matches); }
+      mq.addEventListener('change', onMqChange);
+
+      // Etat initial coherent si la page s'ouvre en mobile
+      if (isMobile) {
+        pairsEls.forEach(function (el) {
+          el.classList.remove('pg-pair--active');
+          el.setAttribute('aria-hidden', 'true');
+        });
+        if (singlesEls[0]) {
+          singlesEls[0].classList.add('pg-single--active');
+          singlesEls[0].setAttribute('aria-hidden', 'false');
+        }
+      }
+
+      /* Ecouteurs portes par des elements de la page : ils disparaissent
+         d'eux-memes avec le DOM au moment de la navigation. */
+      if (prevBtn)  prevBtn.addEventListener('click', function () { goTo(current - 1); });
+      if (nextBtn)  nextBtn.addEventListener('click', function () { goTo(current + 1); });
+      if (zonePrev) zonePrev.addEventListener('click', function () { goTo(current - 1); });
+      if (zoneNext) zoneNext.addEventListener('click', function () { goTo(current + 1); });
+
+      /* Clavier — fleches, Page prec./suiv., Debut/Fin. On laisse passer la
+         frappe dans un champ de saisie et les raccourcis du navigateur
+         (Alt+fleche = page precedente, par exemple). */
+      function onKeyDown(e) {
+        if (e.defaultPrevented || e.isComposing) return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+        var el = e.target;
+        var tag = el && el.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (el && el.isContentEditable) return;
+
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown') {
+          e.preventDefault();
+          goTo(current + 1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+          e.preventDefault();
+          goTo(current - 1);
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          goTo(0);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          goTo(total - 1);
+        }
+      }
+      document.addEventListener('keydown', onKeyDown);
+
+      // Swipe mobile — horizontal prioritaire, vertical accepte
+      var touchX = 0;
+      var touchY = 0;
+      stage.addEventListener('touchstart', function (e) {
+        touchX = e.touches[0].clientX;
+        touchY = e.touches[0].clientY;
+      }, { passive: true });
+      stage.addEventListener('touchend', function (e) {
+        var dx = touchX - e.changedTouches[0].clientX;
+        var dy = touchY - e.changedTouches[0].clientY;
+        var threshold = 48;
+        if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > threshold) {
+          goTo(dx > 0 ? current + 1 : current - 1);
+        } else if (Math.abs(dy) > threshold) {
+          goTo(dy > 0 ? current + 1 : current - 1);
+        }
+      }, { passive: true });
+
+      // La galerie occupe tout l'ecran : pas de defilement du corps de page.
+      document.body.style.overflow = 'hidden';
+
+      window.__pgTeardown = function () {
+        document.removeEventListener('keydown', onKeyDown);
+        mq.removeEventListener('change', onMqChange);
+        document.body.style.overflow = '';
+      };
+
+      updateUI();
+    }
+
+    /* Un seul jeu d'ecouteurs de cycle de vie, meme si Astro venait a rejouer
+       ce script : `astro:page-load` couvre le premier chargement ET chaque
+       navigation ulterieure. */
+    if (!window.__pgHooked) {
+      window.__pgHooked = true;
+      document.addEventListener('astro:page-load', initGallery);
+      document.addEventListener('astro:before-preparation', teardownGallery);
+    }
+
+    // Premier chargement : `astro:page-load` a pu se declencher avant nous.
+    initGallery();
   })();
   </script>
 )}
