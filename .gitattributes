@@ -1,0 +1,16 @@
+# Normalise les fins de ligne : LF dans le dépôt, natif dans la copie de travail.
+# Évite que chaque fichier édité sous Windows apparaisse comme entièrement modifié.
+* text=auto eol=lf
+
+# Binaires — ne jamais convertir
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.woff  binary
+*.woff2 binary

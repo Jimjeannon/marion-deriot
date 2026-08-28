@@ -34,3 +34,7 @@ npm-debug.log*
 
 # Sanity
 .sanity/
+
+# Fichiers de travail temporaires (captures, zips, exemples)
+_tmp_verif/
+HOME_ASTRO_EXEMPLE_MODIFIE.astro

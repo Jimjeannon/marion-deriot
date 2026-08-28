@@ -1,112 +1,180 @@
-# Déploiement — diagnostic et solutions
+# Déploiement — Marion Dériot
 
-## Causes probables des échecs Vercel/Netlify
+Guide de mise en ligne : **preprod + production sur Netlify**, contenu géré par la
+cliente via `/admin`.
 
-### 1. Taille du dépôt (cause principale suspectée)
+---
 
-`public/images/projets/` pèse **963 MB**. Total déploiement : **~1 GB**.
+## 1. Comment le site est architecturé
 
-Limites :
+```
+  Cliente ──▶ /admin  ──écrit──▶  Sanity (base de données hébergée, EU)
+                                        │
+  Visiteur ──▶ /projets ──lit à chaque requête──┘
+```
 
-| Plateforme | Limite par déploiement | Limite par fichier |
+**Il n'y a pas d'autre base de données à créer.** Sanity *est* la base de données.
+
+- Le projet Sanity existe déjà : `t4wzgksq`, dataset `production`.
+- L'interface `/admin` écrit dedans via `SANITY_API_WRITE_TOKEN`
+  (`src/pages/api/admin/**`, `src/lib/sanity-write.ts`).
+- `/projets` et `/projets/[slug]` sont en `prerender = false` : elles interrogent
+  Sanity **à chaque visite**. Une modification faite dans `/admin` est donc
+  visible immédiatement — **aucun redéploiement, aucun webhook nécessaire**.
+- `src/data/projects-catalog.ts` reste la source de secours et définit l'**ordre
+  éditorial** des projets. La fusion se fait dans `src/lib/projects.ts` : les
+  champs saisis dans l'admin priment sur le catalogue local.
+- La home (`/home`) est statique : ses 12 images vivent dans `src/assets/home/`
+  et sont optimisées au build. Les changer demande une modification du code.
+
+### Pourquoi Netlify et pas Vercel
+
+Le plan **Vercel Hobby est réservé à un usage non commercial et personnel**
+(fair use guidelines). Un site d'agence est un usage commercial : il faudrait
+passer en Pro à 20 $/mois. Netlify autorise l'usage commercial sur son offre
+gratuite, et le projet est déjà configuré pour lui (`@astrojs/netlify` +
+`netlify.toml`). Cloudflare Pages serait la seule alternative gratuite
+équivalente, mais demanderait de changer d'adaptateur.
+
+---
+
+## 2. À faire AVANT la première mise en ligne
+
+- [ ] **Changer `ADMIN_ACCESS_CODE`.** Le code actuel commence par le nom de la
+      cliente : devinable. Générer 16 caractères aléatoires :
+      `node -e "console.log(require('crypto').randomBytes(12).toString('base64url'))"`
+- [ ] **Formulaire de contact hors service.** `src/pages/api/_contact.ts` commence
+      par un `_` : Astro **exclut du routage** tout fichier préfixé ainsi. La page
+      `/info` poste vers `/api/contact`, qui renvoie donc un 404. Il faut renommer
+      le fichier en `contact.ts` **et** renseigner une vraie `RESEND_API_KEY`
+      (aujourd'hui c'est encore le texte d'exemple).
+- [ ] **Vérifier que Sanity contient bien les 14 projets** : `npm run dev` puis
+      ouvrir `/projets`. Si la liste est vide ou incomplète, le catalogue local
+      prend le relais mais l'admin n'aura rien à modifier.
+- [ ] **Tester le build en local** : `npm run build && npm run preview`.
+
+### Point à savoir sur le plan gratuit Sanity
+
+Les datasets du plan gratuit sont **publics** : n'importe qui connaissant l'ID
+projet peut lire les données via l'API. Sans conséquence ici (un portfolio est
+public par nature), mais ne jamais y stocker d'information confidentielle.
+Limites incluses : 20 utilisateurs, 10 000 documents, 100 Go de bande passante,
+100 Go d'assets. Très au-dessus des besoins du site.
+
+---
+
+## 3. Mise en production
+
+### Étape 1 — Créer le site sur Netlify
+
+1. https://app.netlify.com → **Add new site** → **Import an existing project**
+2. Connecter GitHub, choisir `Jimjeannon/marion-deriot`
+3. Netlify lit `netlify.toml` : la commande (`npm run build`), le dossier publié
+   (`dist`) et Node 20 sont déjà configurés. Ne rien changer.
+4. **Ne pas déployer tout de suite** — d'abord les variables d'environnement.
+
+### Étape 2 — Variables d'environnement
+
+**Site configuration → Environment variables.** Recopier depuis le `.env` local
+(qui n'est pas — et ne doit jamais être — versionné) :
+
+| Variable | Portée | Note |
 | --- | --- | --- |
-| **Vercel Hobby** | 100 MB (asset upload) | 50 MB |
-| **Vercel Pro** | ~5 GB total | 250 MB |
-| **Netlify** | Pas de limite stricte mais build timeout 15-30 min | 25 MB par fichier individuel |
-| **Cloudflare Pages** | 25 GB total | 25 MB par fichier |
+| `ADMIN_ACCESS_CODE` | secret | le **nouveau** code, pas l'ancien |
+| `PUBLIC_SANITY_PROJECT_ID` | public | `t4wzgksq` |
+| `PUBLIC_SANITY_DATASET` | public | `production` |
+| `SANITY_API_WRITE_TOKEN` | secret | token Editor Sanity |
+| `RESEND_API_KEY` | secret | à créer sur resend.com |
+| `CONTACT_EMAIL_TO` | — | adresse de réception |
+| `CONTACT_EMAIL_FROM` | — | domaine vérifié chez Resend |
+| `PUBLIC_SITE_URL` | public | l'URL finale, **sans slash final** |
 
-Tant que les images ne sont pas réduites ou hébergées ailleurs, **aucune plateforme gratuite** n'acceptera ce projet tel quel.
+`PUBLIC_SITE_URL` alimente `site` dans `astro.config.mjs` : canoniques, Open
+Graph et données structurées en dépendent. Une valeur erronée dégrade le SEO.
 
-### 2. Fichiers parasites macOS
+### Étape 3 — Domaine et HTTPS
 
-96 fichiers `._*` (métadonnées AppleDouble) dans `public/`. Inutiles, à supprimer.
+**Domain management → Add a domain.** Netlify fournit le certificat Let's Encrypt
+automatiquement. Chez le registrar, pointer :
 
-Script ajouté :
+- `marionderiot.com` → enregistrement A vers l'IP donnée par Netlify (ou ALIAS)
+- `www` → CNAME vers `<nom-du-site>.netlify.app`
 
-```bash
-npm run clean:macos
-```
+Compter jusqu'à 24 h de propagation DNS. Mettre à jour `PUBLIC_SITE_URL` ensuite
+et relancer un déploiement.
 
-Il tourne aussi automatiquement avant chaque `npm run build` (hook `prebuild`).
+### Étape 4 — La preprod
 
-### 3. Configurations corrigées dans ce passage
-
-- **`vercel.json`** : retiré `outputDirectory` et le bloc `functions` (tous deux ignorés/redondants quand on utilise l'adaptateur `@astrojs/vercel` — la Build Output API gère ça nativement). Ajouté `framework: "astro"` et headers de sécurité.
-- **`astro.config.mjs`** : `webAnalytics` n'est plus activé que si `process.env.VERCEL` existe (sinon Netlify/Cloudflare tentaient de charger `/_vercel/insights/*` qui n'existe pas). Ajouté `ssr.noExternal` pour Sanity (évite des warnings serverless).
-- **`.vercelignore`** ajouté : exclut `.vercel/output` local (sinon Vercel ré-uploade le build d'1 GB déjà fait localement), `node_modules`, fichiers macOS, docs.
-
-## Solutions rapides (par ordre d'effort croissant)
-
-### Option A — Vercel CLI direct (rapide si la taille passe après nettoyage)
+Créer une branche de travail :
 
 ```bash
-npm i -g vercel
-npm run clean:macos        # supprime les 96 fichiers macOS
-vercel --prod              # déploie le repo local en ignorant ce que git voit
+git checkout -b staging
+git push -u origin staging
 ```
 
-Le `.vercelignore` empêche l'upload du build local et des `node_modules`. Si Vercel se plaint encore de la taille, passe à l'option B.
+Sur Netlify : **Site configuration → Build & deploy → Branches and deploy
+contexts** → ajouter `staging` aux *branch deploys*. Elle sera servie sur
+`https://staging--<nom-du-site>.netlify.app`.
 
-### Option B — Cloudflare Pages (le plus tolérant côté taille)
+Deux précautions :
 
-Recommandé si tu veux déployer **sans toucher aux images tout de suite**. Limites : 25 MB par fichier individuel uniquement (donc il faudra quand même compresser les rares fichiers > 25 MB — 41 fichiers > 10 MB chez toi, à vérifier combien > 25 MB).
+- Protéger cette URL par mot de passe (**Access control**) pour qu'elle ne soit
+  pas indexée ni visitée par erreur.
+- Les variables d'environnement peuvent être définies par contexte. Garder le
+  **même dataset Sanity** en preprod et en prod : la cliente n'a alors qu'un seul
+  endroit où éditer, et la preprod montre le contenu réel. Ne créer un dataset
+  `staging` séparé que le jour où vous voudrez tester une modification du modèle
+  de données.
 
-Étapes :
+Workflow :
 
-```bash
-# 1. Installer l'adaptateur Cloudflare
-npm install @astrojs/cloudflare
-npm uninstall @astrojs/vercel
-
-# 2. Modifier astro.config.mjs : remplacer vercel() par cloudflare()
-#    import cloudflare from '@astrojs/cloudflare';
-#    adapter: cloudflare(),
-#    output: 'hybrid'  (déjà bon)
-
-# 3. Connecter le repo via dashboard Cloudflare → Pages → Create
-#    Build command : npm run build
-#    Output directory : dist
+```
+staging  ──▶  vous testez sur l'URL de preprod
+   │
+   └── merge ──▶  main  ──▶  production
 ```
 
-Cloudflare Pages :
-- CDN mondial gratuit, EU par défaut
-- Pas de timeout strict sur la durée du build
-- Pages Functions pour le SSR (compat `output: hybrid`)
-- Variables d'env à recopier depuis `.env` dans le dashboard
+### Étape 5 — Vérifications après mise en ligne
 
-### Option C — Netlify (déconseillé en l'état)
+- [ ] `/` et `/home` s'affichent, les 12 images se chargent
+- [ ] `/projets` liste bien les 14 projets
+- [ ] `/projets/lavoisier` (et 2–3 autres fiches) s'ouvrent
+- [ ] `/admin` demande le code, puis permet de modifier un titre → vérifier que
+      le changement apparaît sur `/projets` après un simple rechargement
+- [ ] Upload d'une image depuis `/admin` (route serverless, à tester en réel)
+- [ ] Formulaire de contact : un mail arrive bien
+- [ ] `/robots.txt` et `/sitemap.xml` répondent
+- [ ] `/admin` renvoie bien `X-Robots-Tag: noindex` (configuré dans `netlify.toml`)
+- [ ] Console navigateur sans erreur CSP (voir `src/middleware.ts`)
 
-Netlify nécessite l'adaptateur `@astrojs/netlify`. Migration plus lourde et la limite de 25 MB par fichier individuel est plus stricte qu'on ne pense — donc même problème que Cloudflare sur les gros JPG, sans le confort.
+---
 
-### Option D — Solution propre long-terme (conforme à CLAUDE.md)
+## 4. Au quotidien
 
-Migrer toutes les images vers **Sanity** (CDN inclus, EU, ce qui était prévu d'origine) :
-- Les images ne sont plus dans `public/`, mais référencées via `urlFor(image)` côté code
-- Le repo passe sous 50 MB
-- Vercel/Netlify/Cloudflare passent tous sans effort
-- Bonus : transformations à la volée (WebP/AVIF, resize, focal point)
+**La cliente** ne touche qu'à `/admin` : titres, descriptions, ordre et images des
+projets. Ses modifications sont en ligne immédiatement.
 
-Effort estimé : ~2 h pour scripter l'upload des 356 fichiers + adapter le code (déjà à moitié prêt, voir `src/lib/sanity.ts` et le flag `isSanityConfigured`).
+**Vous** modifiez le code, poussez sur `staging`, vérifiez, puis mergez dans
+`main`. Chaque push déclenche un déploiement automatique.
 
-## Pour aller plus vite si tu gères les images toi-même
+Pour revenir en arrière : **Deploys → Published deploy → Publish deploy** sur une
+version précédente. Instantané.
 
-Une fois les images compressées sous 200 MB total, **tout fonctionnera sur Vercel Hobby**. Outils suggérés :
+---
 
-- **ImageOptim** (Mac, gratuit, drag-and-drop) — réduction sans perte visible
-- **Squoosh CLI** : `npx @squoosh/cli --webp '{"quality":82}' public/images/projets/**/*.jpg`
-- **sharp-cli** : `npx sharp-cli -i 'public/images/projets/**/*.jpg' -o public/images/projets/ resize 2400 --withoutEnlargement -f jpeg --quality 82`
+## 5. Points de vigilance
 
-Objectif : 2400 px max sur le grand côté, qualité 82, format AVIF si possible.
-
-## Checklist avant push
-
-- [ ] `npm run clean:macos` exécuté (ou trust le hook `prebuild`)
-- [ ] Images compressées (`public/` < 200 MB idéalement)
-- [ ] `.env` jamais commité (déjà dans `.gitignore`)
-- [ ] Variables d'env recopiées dans le dashboard Vercel/Cloudflare
-  - `ADMIN_ACCESS_CODE`
-  - `PUBLIC_SANITY_PROJECT_ID`, `PUBLIC_SANITY_DATASET`
-  - `SANITY_API_WRITE_TOKEN`
-  - `RESEND_API_KEY`, `CONTACT_EMAIL_TO`, `CONTACT_EMAIL_FROM`
-  - `PUBLIC_SITE_URL`
-- [ ] `npm run build` passe en local sans warning
+- **Ne jamais committer `.env`.** Il est dans `.gitignore` — vérifier avant chaque
+  `git add .` que rien de sensible ne remonte.
+- **`public/images/` pèse environ 100 Mo** (535 fichiers). Netlify l'accepte, mais
+  ces images sont servies brutes, sans passer par le pipeline d'optimisation
+  d'Astro. Si les Core Web Vitals se dégradent, les migrer vers Sanity (qui sert
+  du WebP redimensionné à la volée) ou vers `src/assets/`.
+- **Deux fichiers orphelins** dans `public/images/projets/Lavoisier/` : `1ère
+  page.jpg` / `.webp`. Ils ne sont référencés nulle part et leur nom contient un
+  accent en forme décomposée, source d'ennuis entre Windows et Linux. À supprimer.
+- **Le token Sanity est un secret.** S'il fuite, quelqu'un peut écrire dans la
+  base. Le régénérer depuis sanity.io/manage en cas de doute.
+- **Sitemap** : la génération automatique est désactivée dans `astro.config.mjs`
+  (conflit i18n). Le `public/sitemap.xml` est écrit à la main — le tenir à jour
+  quand des pages sont ajoutées.
