@@ -12,18 +12,77 @@
 import MainLayout from '@/layouts/MainLayout.astro';
 import ProjectGallery from '@/components/sections/ProjectGallery.astro';
 import { getProjectBySlug, getLocalized } from '@/lib/projects';
+import { resolveImageUrl } from '@/lib/sanity';
 
 // SSR : rendu a la demande -> un projet cree via /admin apparait immediatement, sans rebuild.
 export const prerender = false;
 
 const { slug } = Astro.params;
 const project = slug ? await getProjectBySlug(slug, 'fr') : null;
+
+/**
+ * Slug inconnu : on rend la page 404, qui pose elle-même le statut 404.
+ *
+ * Avant, on redirigeait en 302 vers /projets. Pour un moteur de recherche
+ * c'est le pire des deux mondes : l'URL supprimée reste indexée (la 302 dit
+ * « reviens plus tard »), et la page d'arrivée n'a rien à voir avec ce qui
+ * était demandé — Google requalifie cela en « soft 404 ». Un vrai 404 fait
+ * sortir proprement l'URL de l'index.
+ */
 if (!project) {
-  return Astro.redirect('/projets', 302);
+  return Astro.rewrite('/404');
 }
+
+const SITE = 'https://marionderiot.com';
+const projectSlug = project.slug.fr.current;
+const projectUrl = `${SITE}/projets/${projectSlug}`;
+
+/**
+ * Absolutise une URL d'image.
+ *
+ * Les images Sanity arrivent déjà en absolu depuis le CDN, mais celles du
+ * catalogue local sont des chemins (`/images/projets/...`). Or Open Graph
+ * comme schema.org exigent des URL absolues : servies en relatif, les
+ * aperçus de partage restent vides et Google ignore les images déclarées.
+ */
+const abs = (url: string | null): string | null =>
+  url ? new URL(url, Astro.site).href : null;
 
 const pageTitle = project.seo?.title?.fr ?? `${project.title.fr} — Marion Dériot`;
 const pageDescription = project.seo?.description?.fr ?? getLocalized(project.description, 'fr');
+
+/**
+ * Image de partage — celle définie dans l'admin si elle existe, sinon la
+ * première image de preview, recadrée au 1.91:1 attendu par les réseaux.
+ */
+const previewImg =
+  project.seo?.ogImage ??
+  project.gallery.find((img) => img.isPreview) ??
+  project.gallery[0] ??
+  null;
+const ogImage =
+  abs(resolveImageUrl(previewImg, 1200, 630)) ?? new URL('/og-home.jpg', Astro.site).href;
+
+/**
+ * Les images de la galerie, décrites une à une : c'est ce qui permet à Google
+ * Images de rattacher chaque photo à cette fiche plutôt qu'à une URL de CDN
+ * anonyme — le principal levier de visibilité pour un portfolio.
+ */
+const galleryImages = project.gallery
+  .map((img) => {
+    const url = abs(resolveImageUrl(img, 1600));
+    if (!url) return null;
+    return {
+      '@type': 'ImageObject',
+      'contentUrl': url,
+      'caption': img.alt ? getLocalized(img.alt, 'fr') : project.title.fr,
+      'representativeOfPage': img === previewImg,
+      ...(project.photographer ? { 'creditText': project.photographer } : {}),
+    };
+  })
+  .filter(Boolean);
+
+const locationLabel = project.location ? getLocalized(project.location, 'fr') : null;
 ---
 
 <MainLayout
@@ -31,24 +90,53 @@ const pageDescription = project.seo?.description?.fr ?? getLocalized(project.des
   description={pageDescription}
   lang="fr"
   activeNav="projects"
+  ogImage={ogImage}
 >
+  {/*
+    La réalisation elle-même. `creator` pointe vers l'@id de l'agence déclaré
+    sur la home : les fiches projet, la home et la page /projets décrivent
+    ainsi une seule et même entité, au lieu de trois « Marion Dériot » que
+    Google devrait deviner être la même personne.
+  */}
   <script type="application/ld+json" set:html={JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'CreativeWork',
+    '@id': `${projectUrl}#projet`,
     'name': project.title.fr,
+    'headline': project.title.fr,
     'description': getLocalized(project.description, 'fr'),
-    'creator': { '@type': 'Person', 'name': 'Marion Dériot' },
-    'dateCreated': project.year?.toString(),
+    'url': projectUrl,
+    'inLanguage': 'fr-FR',
+    'creator': { '@id': `${SITE}/#agence` },
+    'author': { '@id': `${SITE}/#agence` },
+    'provider': { '@id': `${SITE}/#agence` },
+    'isPartOf': { '@id': `${SITE}/projets#catalogue` },
+    ...(project.year ? { 'dateCreated': String(project.year) } : {}),
     'genre': project.category,
+    'keywords': [
+      "architecture d'intérieur",
+      'rénovation sur mesure',
+      'menuiserie sur mesure',
+      project.title.fr,
+      ...(locationLabel ? [locationLabel] : []),
+    ].join(', '),
+    ...(locationLabel
+      ? { 'locationCreated': { '@type': 'Place', 'name': locationLabel } }
+      : {}),
+    ...(project.surface ? { 'size': project.surface } : {}),
+    ...(galleryImages.length ? { 'image': galleryImages } : {}),
+    ...(project.photographer
+      ? { 'copyrightHolder': { '@type': 'Person', 'name': project.photographer } }
+      : {}),
   })} />
 
   <script type="application/ld+json" set:html={JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     'itemListElement': [
-      { '@type': 'ListItem', 'position': 1, 'name': 'Accueil', 'item': 'https://marionderiot.com/home' },
-      { '@type': 'ListItem', 'position': 2, 'name': 'Projets', 'item': 'https://marionderiot.com/projets' },
-      { '@type': 'ListItem', 'position': 3, 'name': project.title.fr, 'item': `https://marionderiot.com/projets/${project.slug.fr.current}` },
+      { '@type': 'ListItem', 'position': 1, 'name': 'Accueil', 'item': `${SITE}/home` },
+      { '@type': 'ListItem', 'position': 2, 'name': 'Projets', 'item': `${SITE}/projets` },
+      { '@type': 'ListItem', 'position': 3, 'name': project.title.fr, 'item': projectUrl },
     ],
   })} />
 

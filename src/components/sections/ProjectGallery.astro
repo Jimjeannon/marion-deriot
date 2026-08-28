@@ -15,7 +15,12 @@ import type { SiteProject } from '@/lib/projects';
 import type { Locale } from '@/i18n';
 import { getDict } from '@/i18n';
 import { getLocalized } from '@/lib/projects';
-import { resolveImageUrl, type SanityImage } from '@/lib/sanity';
+import {
+  GALLERY_WIDTHS,
+  buildImageSrcSet,
+  resolveImageUrl,
+  type SanityImage,
+} from '@/lib/sanity';
 
 interface Props {
   project: SiteProject;
@@ -29,10 +34,24 @@ const allImages: SanityImage[] = project.gallery ?? [];
 const hasGallery = allImages.length > 0;
 const title = getLocalized(project.title, lang);
 
+/**
+ * Chaque image est déclinée en plusieurs largeurs, en AVIF et en WebP.
+ *
+ * Auparavant une URL unique en 2 400 px servait tous les cas — la même image
+ * pour un cadre de 1 100 px sur grand écran et pour un téléphone de 390 px de
+ * large. Comme chaque photo est en outre présente deux fois dans le document
+ * (jeu desktop en paires, jeu mobile en solo), le poids de la page grimpait
+ * très vite : c'est le principal frein aux performances des fiches projet.
+ */
 const images = allImages.map((img) => ({
-  src: resolveImageUrl(img, 2400) ?? '',
+  src: resolveImageUrl(img, 1600) ?? '',
+  srcSet: buildImageSrcSet(img, GALLERY_WIDTHS),
   alt: img.alt ? getLocalized(img.alt, lang) : title,
 }));
+
+/** Deux images par cadre au-dessus de 768 px, une seule en dessous. */
+const PAIR_SIZES = '(min-width: 768px) 46vw, 92vw';
+const SOLO_SIZES = '92vw';
 
 // Grouper en paires de 2
 const pairs: (typeof images)[] = [];
@@ -79,6 +98,8 @@ const metaLine = metaParts.join(' · ');
               <div class="pg-cell">
                 <img
                   src={item.src}
+                  srcset={item.srcSet ?? undefined}
+                  sizes={item.srcSet ? PAIR_SIZES : undefined}
                   alt={item.alt}
                   class="pg-img"
                   loading={pairIdx === 0 ? 'eager' : 'lazy'}
@@ -103,6 +124,8 @@ const metaLine = metaParts.join(' · ');
             <div class="pg-cell">
               <img
                 src={item.src}
+                srcset={item.srcSet ?? undefined}
+                sizes={item.srcSet ? SOLO_SIZES : undefined}
                 alt={item.alt}
                 class="pg-img"
                 loading={imgIdx === 0 ? 'eager' : 'lazy'}

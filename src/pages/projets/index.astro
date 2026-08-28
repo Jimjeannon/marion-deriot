@@ -5,13 +5,53 @@
 import MainLayout from '@/layouts/MainLayout.astro';
 import ProjectList from '@/components/sections/ProjectList.astro';
 import { getDict } from '@/i18n';
-import { getAllProjects } from '@/lib/projects';
+import { getAllProjects, getLocalized, getProjectSlug } from '@/lib/projects';
+import { resolveImageUrl } from '@/lib/sanity';
 
 // SSR : la liste reflete immediatement les projets ajoutes via /admin.
 export const prerender = false;
 
 const t = getDict('fr');
 const projects = await getAllProjects();
+
+const SITE = 'https://marionderiot.com';
+
+/**
+ * Absolutise une URL d'image — les images Sanity le sont déjà, celles du
+ * catalogue local sont des chemins. Open Graph et schema.org exigent l'absolu.
+ */
+const abs = (url: string | null): string | null =>
+  url ? new URL(url, Astro.site).href : null;
+
+/**
+ * Image de partage de la page — la vignette du premier projet, à défaut
+ * l'image Open Graph du site. Sans elle, un partage de /projets sur LinkedIn
+ * ou WhatsApp n'affichait qu'un rectangle vide.
+ */
+const firstPreview =
+  projects[0]?.gallery.find((img) => img.isPreview) ?? projects[0]?.gallery[0] ?? null;
+const ogImage =
+  abs(resolveImageUrl(firstPreview, 1200, 630)) ?? new URL('/og-home.jpg', Astro.site).href;
+
+/**
+ * Liste ordonnée des projets — c'est elle qui permet à Google de comprendre
+ * que cette page est un catalogue, d'en afficher les entrées comme un
+ * ensemble, et de relier chaque vignette à sa fiche.
+ */
+const itemListElement = projects.map((project, index) => {
+  const slug = getProjectSlug(project, 'fr');
+  const preview =
+    project.gallery.find((img) => img.isPreview) ?? project.gallery[0] ?? null;
+  const image = abs(resolveImageUrl(preview, 800, 1200));
+
+  return {
+    '@type': 'ListItem',
+    'position': index + 1,
+    'url': `${SITE}/projets/${slug}`,
+    'name': getLocalized(project.title, 'fr'),
+    ...(image ? { 'image': image } : {}),
+  };
+});
 ---
 
 <MainLayout
@@ -19,14 +59,39 @@ const projects = await getAllProjects();
   description={t.projects.metaDescription}
   lang="fr"
   activeNav="projects"
+  ogImage={ogImage}
 >
   <script type="application/ld+json" set:html={JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     'itemListElement': [
-      { '@type': 'ListItem', 'position': 1, 'name': 'Accueil', 'item': 'https://marionderiot.com/home' },
-      { '@type': 'ListItem', 'position': 2, 'name': 'Projets', 'item': 'https://marionderiot.com/projets' },
+      { '@type': 'ListItem', 'position': 1, 'name': 'Accueil', 'item': `${SITE}/home` },
+      { '@type': 'ListItem', 'position': 2, 'name': 'Projets', 'item': `${SITE}/projets` },
     ],
+  })} />
+
+  {/*
+    La page elle-même, décrite comme un catalogue rattaché à l'agence : Google
+    relie ainsi les fiches projet à la même entité que la home (#agence), au
+    lieu de les traiter comme des pages isolées.
+  */}
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': `${SITE}/projets#catalogue`,
+    'name': t.projects.metaTitle,
+    'description': t.projects.metaDescription,
+    'url': `${SITE}/projets`,
+    'inLanguage': 'fr-FR',
+    'isPartOf': { '@id': `${SITE}/#agence` },
+    'about': { '@id': `${SITE}/#agence` },
+    'mainEntity': {
+      '@type': 'ItemList',
+      'name': 'Réalisations — Agence Marion Dériot',
+      'numberOfItems': projects.length,
+      'itemListOrder': 'https://schema.org/ItemListOrderAscending',
+      itemListElement,
+    },
   })} />
 
   <div class="px-10 pt-6 pb-12 lg:px-16 lg:pt-8">

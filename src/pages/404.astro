@@ -4,6 +4,20 @@
  * Sobre, dans le style du site. Pas de sidebar (pas de layout complet).
  */
 import MainLayout from '@/layouts/MainLayout.astro';
+
+/**
+ * Rendu à la demande — et non pré-rendu.
+ *
+ * Deux raisons. D'abord, cette page est la cible du `Astro.rewrite('/404')`
+ * des fiches projet : elle doit pouvoir s'exécuter à la volée. Ensuite et
+ * surtout, c'est ici qu'on fixe le code de statut : une page introuvable qui
+ * répondrait 200 est une « soft 404 », que Google finit par indexer comme une
+ * page vide et qui dilue le référencement du reste du site.
+ */
+export const prerender = false;
+
+Astro.response.status = 404;
+Astro.response.headers.set('X-Robots-Tag', 'noindex, follow');
 ---
 
 <MainLayout

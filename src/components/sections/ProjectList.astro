@@ -3,7 +3,7 @@ import { getDict, getProjectUrl } from '@/i18n';
 import type { Locale } from '@/i18n';
 import type { SiteProject } from '@/lib/projects';
 import { getLocalized, getProjectMetaLine, getProjectSlug } from '@/lib/projects';
-import { resolveImageUrl } from '@/lib/sanity';
+import { CARD_WIDTHS, buildImageSrcSet, resolveImageUrl } from '@/lib/sanity';
 
 interface Props {
   projects: SiteProject[];
@@ -12,6 +12,24 @@ interface Props {
 
 const { projects, lang } = Astro.props;
 const t = getDict(lang);
+
+/**
+ * Format des vignettes — identique à l'`aspect-ratio` de `.project-card__img-wrap`.
+ * Les images sont recadrées à ce format côté CDN : le navigateur ne télécharge
+ * plus les pixels que le `object-fit: cover` allait de toute façon rogner.
+ */
+const CARD_RATIO = 1.5; // 2:3
+
+/**
+ * Deux colonnes sous 768 px, trois au-delà, dans un conteneur à marges de
+ * 40 px (64 px en lg). Les valeurs ci-dessous sont volontairement un peu
+ * généreuses : mieux vaut une vignette légèrement trop fine que floue.
+ */
+const CARD_SIZES = '(min-width: 1024px) 30vw, (min-width: 768px) 31vw, 45vw';
+
+/** Dimensions intrinsèques déclarées sur le <img> — réservent la place, CLS nul. */
+const CARD_W = 480;
+const CARD_H = Math.round(CARD_W * CARD_RATIO);
 ---
 
 <ul
@@ -27,8 +45,17 @@ const t = getDict(lang);
     // Première image preview, sinon première image de la galerie
     const previewImg =
       project.gallery.find((img) => img.isPreview) ?? project.gallery[0] ?? null;
-    const imgSrc = previewImg ? (resolveImageUrl(previewImg, 900) ?? '') : '';
+    const imgSrc = previewImg
+      ? (resolveImageUrl(previewImg, CARD_W, CARD_H) ?? '')
+      : '';
     const imgAlt = previewImg?.alt ? getLocalized(previewImg.alt, lang) : title;
+
+    // Jeu de largeurs — nul pour une image locale : on sert alors le <img> seul.
+    const srcSet = buildImageSrcSet(previewImg, CARD_WIDTHS, CARD_RATIO);
+
+    // Les deux premières cartes sont au-dessus de la ligne de flottaison sur
+    // tous les formats : elles portent le LCP et ne doivent pas être différées.
+    const isAboveFold = idx < 2;
 
     return (
       <li>
@@ -42,9 +69,14 @@ const t = getDict(lang);
             {imgSrc ? (
               <img
                 src={imgSrc}
+                srcset={srcSet ?? undefined}
+                sizes={srcSet ? CARD_SIZES : undefined}
                 alt={imgAlt}
+                width={CARD_W}
+                height={CARD_H}
                 class="project-card__img"
-                loading={idx < 4 ? 'eager' : 'lazy'}
+                loading={isAboveFold ? 'eager' : 'lazy'}
+                fetchpriority={isAboveFold ? 'high' : 'auto'}
                 decoding="async"
               />
             ) : (

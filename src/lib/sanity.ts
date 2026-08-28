@@ -179,6 +179,62 @@ export function resolveImageUrl(
 }
 
 /**
+ * Largeurs générées pour les vignettes de la liste projets.
+ *
+ * Une carte fait environ 45 vw sur un portable (grille 2 colonnes) et 30 vw
+ * au-delà de 768 px (grille 3 colonnes). Les largeurs ci-dessous couvrent ces
+ * deux cas en 1× comme en 2×, sans jamais dépasser ce qui est réellement
+ * affiché : c'est tout l'intérêt d'un srcset face à une URL unique en 900 px,
+ * qui faisait télécharger jusqu'à cinq fois trop de pixels sur mobile.
+ */
+export const CARD_WIDTHS = [240, 360, 480, 720, 960];
+
+/**
+ * Largeurs générées pour les images plein cadre des fiches projet.
+ *
+ * Une image de galerie occupe au plus la moitié d'un grand écran, soit environ
+ * 1 100 px — 2 000 px couvre donc le 2× des plus grands moniteurs. Toutes les
+ * images étaient auparavant servies en 2 400 px quelle que soit la taille
+ * réelle d'affichage, y compris sur mobile.
+ */
+export const GALLERY_WIDTHS = [480, 720, 960, 1280, 1600, 2000];
+
+/**
+ * Construit un `srcset` Sanity pour une image.
+ *
+ * `ratio` (hauteur rapportée à la largeur, 1.5 pour du 2:3) est facultatif :
+ * fourni, il recadre via `fit('crop')`, qui respecte le hotspot défini dans
+ * Sanity Studio — le sujet reste centré même sur les vignettes étroites.
+ * Omis, l'image garde ses proportions d'origine et n'est que redimensionnée.
+ *
+ * Le format est laissé à `auto=format` : le CDN Sanity négocie lui-même le
+ * WebP à partir de l'en-tête `Accept` du navigateur. Inutile donc d'empiler
+ * des `<source>` par format — un simple `srcset` sur le `<img>` suffit, et
+ * l'AVIF n'est de toute façon pas proposé par le pipeline Sanity.
+ *
+ * Retourne null pour une source locale (`src`) ou si Sanity n'est pas
+ * configuré — l'appelant retombe alors sur un `<img>` simple.
+ */
+export function buildImageSrcSet(
+  image: SanityImage | undefined | null,
+  widths: number[],
+  ratio?: number | null
+): string | null {
+  if (!image || image.src || !image.asset || !isSanityConfigured()) return null;
+  try {
+    return widths
+      .map((w) => {
+        let builder = urlFor(image).width(w);
+        if (ratio) builder = builder.height(Math.round(w * ratio)).fit('crop');
+        return `${builder.auto('format').quality(72).url()} ${w}w`;
+      })
+      .join(', ');
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Récupère le document "info" (photo + infos Marion Dériot)
  */
 export async function getInfoDocument(): Promise<{
