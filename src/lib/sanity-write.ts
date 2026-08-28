@@ -6,10 +6,16 @@
  */
 import { createClient, type SanityClient } from '@sanity/client';
 
+/*
+ * Vite fige les `import.meta.env.X` au moment du build. Sur Netlify, une
+ * variable ajoutée ou modifiée APRÈS le dernier déploiement n'y figure donc
+ * pas — d'où le repli sur `process.env`, lu à l'exécution de la fonction.
+ * L'accès statique est conservé en premier : c'est lui qui fonctionne en dev.
+ */
 /** Vérifie si Sanity est correctement configuré pour les opérations d'écriture. */
 export function isSanityWriteConfigured(): boolean {
-  const projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID;
-  const token = import.meta.env.SANITY_API_WRITE_TOKEN;
+  const projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID ?? process.env.PUBLIC_SANITY_PROJECT_ID;
+  const token = import.meta.env.SANITY_API_WRITE_TOKEN ?? process.env.SANITY_API_WRITE_TOKEN;
   return !!(
     projectId &&
     projectId !== 'your_project_id_here' &&
@@ -26,10 +32,10 @@ export function getSanityWriteClient(): SanityClient {
     );
   }
   return createClient({
-    projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID,
-    dataset: import.meta.env.PUBLIC_SANITY_DATASET || 'production',
+    projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID ?? process.env.PUBLIC_SANITY_PROJECT_ID!,
+    dataset: import.meta.env.PUBLIC_SANITY_DATASET ?? process.env.PUBLIC_SANITY_DATASET ?? 'production',
     apiVersion: '2024-01-01',
-    token: import.meta.env.SANITY_API_WRITE_TOKEN,
+    token: import.meta.env.SANITY_API_WRITE_TOKEN ?? process.env.SANITY_API_WRITE_TOKEN,
     useCdn: false,
   });
 }

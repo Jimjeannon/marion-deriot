@@ -13,8 +13,14 @@ export const SESSION_COOKIE_NAME = 'admin_session';
 /** Durée de validité du token de session (jours). */
 const SESSION_DURATION_DAYS = 2;
 
+/*
+ * Vite fige les `import.meta.env.X` au moment du build. Sur Netlify, une
+ * variable ajoutée ou modifiée APRÈS le dernier déploiement n'y figure donc
+ * pas — d'où le repli sur `process.env`, lu à l'exécution de la fonction.
+ * L'accès statique est conservé en premier : c'est lui qui fonctionne en dev.
+ */
 function getAdminCode(): string {
-  const code = import.meta.env.ADMIN_ACCESS_CODE;
+  const code = import.meta.env.ADMIN_ACCESS_CODE ?? process.env.ADMIN_ACCESS_CODE;
   if (!code) throw new Error('ADMIN_ACCESS_CODE non défini dans .env');
   return code;
 }
