@@ -101,7 +101,9 @@ function mergeWithCatalog(sanityProject: SanityProject): SiteProject {
     location: sanityLocation ?? local.location,
     brief: sanityProject.clientType ?? local.brief,
     year: sanityProject.year ?? local.year,
-    gallery: sanityProject.gallery ?? [],
+    // Sanity ne prime que s'il a réellement des images : un projet créé dans
+    // l'admin sans photo ne doit pas effacer la galerie du catalogue local.
+    gallery: sanityProject.gallery?.length ? sanityProject.gallery : local.gallery,
     seo: sanityProject.seo,
   };
 }

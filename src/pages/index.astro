@@ -3,7 +3,7 @@
  * Landing page FR — /
  *
  * Tous écrans : slideshow plein écran, crossfade, Ken Burns.
- *   5 images défilent en séquence automatique.
+ *   4 images défilent en séquence automatique.
  *   Dots de navigation visibles sur mobile, masqués sur desktop.
  *
  * Principes communs :
@@ -33,10 +33,6 @@ const images = [
     src: '/images/landing/04-mignet.webp',
     alt: 'Mignet — conception Marion Dériot, Paris',
   },
-  {
-    src: '/images/projets/Vaucresson/_DSC5477.webp',
-    alt: 'Vaucresson — aménagement sur mesure, Agence Marion Dériot architecte d\'intérieur',
-  },
 ];
 ---
 
@@ -48,10 +44,9 @@ const images = [
   <!-- Préchargement : toutes les images sont au-dessus du fold sur desktop -->
   <Fragment slot="head">
     <link rel="preload" as="image" href={images[0].src} fetchpriority="high" />
-    <link rel="preload" as="image" href={images[1].src} fetchpriority="low" />
-    <link rel="preload" as="image" href={images[2].src} fetchpriority="low" />
-    <link rel="preload" as="image" href={images[3].src} fetchpriority="low" />
-    <link rel="preload" as="image" href={images[4].src} fetchpriority="low" />
+    {images.slice(1).map((img) => (
+      <link rel="preload" as="image" href={img.src} fetchpriority="low" />
+    ))}
     <script is:inline define:vars={{ firstSlideSrc: images[0].src }}>
       (function revealLanding(src) {
         function ready() {
