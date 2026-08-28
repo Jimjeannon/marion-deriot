@@ -5,6 +5,13 @@
  * Ne jamais importer ce module côté client.
  */
 import { createClient, type SanityClient } from '@sanity/client';
+import { getSanityProjectId, getSanityDataset } from '@/lib/sanity-config';
+
+/** Vérifie si Sanity est correctement configuré pour les opérations d'écriture. */
+export function isSanityWriteConfigured(): boolean {
+  const token = getWriteToken();
+  return !!(getSanityProjectId() && token && token !== 'your_write_token_here');
+}
 
 /*
  * Vite fige les `import.meta.env.X` au moment du build. Sur Netlify, une
@@ -12,30 +19,23 @@ import { createClient, type SanityClient } from '@sanity/client';
  * pas — d'où le repli sur `process.env`, lu à l'exécution de la fonction.
  * L'accès statique est conservé en premier : c'est lui qui fonctionne en dev.
  */
-/** Vérifie si Sanity est correctement configuré pour les opérations d'écriture. */
-export function isSanityWriteConfigured(): boolean {
-  const projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID ?? process.env.PUBLIC_SANITY_PROJECT_ID;
-  const token = import.meta.env.SANITY_API_WRITE_TOKEN ?? process.env.SANITY_API_WRITE_TOKEN;
-  return !!(
-    projectId &&
-    projectId !== 'your_project_id_here' &&
-    token &&
-    token !== 'your_write_token_here'
-  );
+/** Token d'écriture — seul secret réel, jamais écrit dans le dépôt. */
+function getWriteToken(): string | undefined {
+  return import.meta.env.SANITY_API_WRITE_TOKEN ?? process.env.SANITY_API_WRITE_TOKEN;
 }
 
 /** Crée un client Sanity avec droits d'écriture (nouveau client à chaque appel pour garantir le bon token). */
 export function getSanityWriteClient(): SanityClient {
   if (!isSanityWriteConfigured()) {
     throw new Error(
-      'Sanity non configuré. Renseignez PUBLIC_SANITY_PROJECT_ID et SANITY_API_WRITE_TOKEN dans .env'
+      "Sanity non configuré : la variable SANITY_API_WRITE_TOKEN est absente de l'environnement."
     );
   }
   return createClient({
-    projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID ?? process.env.PUBLIC_SANITY_PROJECT_ID!,
-    dataset: import.meta.env.PUBLIC_SANITY_DATASET ?? process.env.PUBLIC_SANITY_DATASET ?? 'production',
+    projectId: getSanityProjectId()!,
+    dataset: getSanityDataset(),
     apiVersion: '2024-01-01',
-    token: import.meta.env.SANITY_API_WRITE_TOKEN ?? process.env.SANITY_API_WRITE_TOKEN,
+    token: getWriteToken(),
     useCdn: false,
   });
 }

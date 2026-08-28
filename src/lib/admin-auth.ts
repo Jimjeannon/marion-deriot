@@ -13,6 +13,20 @@ export const SESSION_COOKIE_NAME = 'admin_session';
 /** Durée de validité du token de session (jours). */
 const SESSION_DURATION_DAYS = 2;
 
+/**
+ * Code d'accès par défaut à /admin.
+ *
+ * Il vit dans le code, pas dans une variable d'environnement : le site
+ * fonctionne donc dès le déploiement, sans rien configurer sur l'hébergeur.
+ * Contrepartie assumée : quiconque lit ce dépôt peut se connecter à /admin et
+ * modifier les projets. Acceptable ici — le contenu est un portfolio public et
+ * toute modification est réversible depuis Sanity.
+ *
+ * Pour changer le code : modifiez la constante ci-dessous, ou définissez
+ * ADMIN_ACCESS_CODE sur l'hébergeur, qui reprend alors la main.
+ */
+const CODE_ADMIN_PAR_DEFAUT = 'marion2024';
+
 /*
  * Vite fige les `import.meta.env.X` au moment du build. Sur Netlify, une
  * variable ajoutée ou modifiée APRÈS le dernier déploiement n'y figure donc
@@ -20,9 +34,11 @@ const SESSION_DURATION_DAYS = 2;
  * L'accès statique est conservé en premier : c'est lui qui fonctionne en dev.
  */
 function getAdminCode(): string {
-  const code = import.meta.env.ADMIN_ACCESS_CODE ?? process.env.ADMIN_ACCESS_CODE;
-  if (!code) throw new Error('ADMIN_ACCESS_CODE non défini dans .env');
-  return code;
+  return (
+    import.meta.env.ADMIN_ACCESS_CODE ??
+    process.env.ADMIN_ACCESS_CODE ??
+    CODE_ADMIN_PAR_DEFAUT
+  );
 }
 
 /**
