@@ -11,7 +11,16 @@
   # Évite le mode strict sur les peer deps qui bloquerait l'install
   NPM_FLAGS = "--legacy-peer-deps"
 
-# Headers de sécurité (cohérents avec vercel.json)
+  # Scan de secrets Netlify : il cherche la VALEUR de chaque variable d'env
+  # définie sur le site dans tout le dépôt et le build. Les variables ci-dessous
+  # ne sont pas des secrets — l'ID projet Sanity circule dans chaque URL d'image,
+  # le dataset s'appelle « production » (mot présent partout), et les adresses de
+  # contact figurent volontairement dans les mentions légales. Les exclure évite
+  # de faire échouer le déploiement sur des faux positifs.
+  # SANITY_API_WRITE_TOKEN, lui, reste scanné : c'est le seul vrai secret.
+  SECRETS_SCAN_OMIT_KEYS = "ADMIN_ACCESS_CODE,PUBLIC_SANITY_PROJECT_ID,PUBLIC_SANITY_DATASET,PUBLIC_SITE_URL,CONTACT_EMAIL_TO,CONTACT_EMAIL_FROM"
+
+# Headers de sécurité
 [[headers]]
   for = "/*"
   [headers.values]

@@ -1,10 +1,16 @@
 import { createClient } from '@sanity/client';
 
+const SANITY_TOKEN = process.env.SANITY_API_WRITE_TOKEN;
+if (!SANITY_TOKEN) {
+  console.error('ERREUR : SANITY_API_WRITE_TOKEN manquant. Renseignez-le dans .env avant de lancer ce script.');
+  process.exit(1);
+}
+
 const client = createClient({
-  projectId: 't4wzgksq',
-  dataset: 'production',
+  projectId: process.env.PUBLIC_SANITY_PROJECT_ID || 't4wzgksq',
+  dataset: process.env.PUBLIC_SANITY_DATASET || 'production',
   apiVersion: '2024-05-29',
-  token: 'sk1vb4nBQ6Lt34ZRDuY2uKWjbla7gBYCsxpjzrxEg5Z2UohTAu0qcJlCKwzNbgGK5u71eaYCg3KaNezmLq6oP2VYFY4dUc6LL2a7f7Qidt7vYEPaWZPoLIz2PIY0OzcXgSGcQaGEqBGvb7rNvFXFPUXF2c6fPeXGSyzm3DM7frIBpPntVltF',
+  token: SANITY_TOKEN,
   useCdn: false,
 });
 
