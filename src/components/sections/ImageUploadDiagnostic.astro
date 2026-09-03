@@ -1,0 +1,408 @@
+---
+/**
+ * Composant d'upload avec diagnostic d'erreurs
+ * Affiche un formulaire d'upload et les résultats du diagnostic
+ */
+import { getImageUploadConfig } from '@/lib/sanity/sanity-config';
+
+interface Props {
+  projectId?: string;
+  onUploadSuccess?: (assetId: string) => void;
+}
+
+const { projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID } = Astro.props;
+---
+
+<div id="imageUploadDiagnostic" class="upload-diagnostic">
+  <div class="upload-form-container">
+    <h3>Ajouter une image au projet</h3>
+    
+    <form id="uploadForm" class="upload-form">
+      <div class="file-input-wrapper">
+        <input 
+          type="file" 
+          id="imageInput" 
+          accept="image/*" 
+          required
+        />
+        <label for="imageInput">Sélectionner une image</label>
+      </div>
+      
+      <button type="submit" id="uploadBtn" class="btn-upload">
+        <span>Vérifier et Uploader</span>
+      </button>
+    </form>
+
+    <div id="diagnosticsContainer" class="diagnostics-container"></div>
+  </div>
+</div>
+
+<script>
+  import { diagnoseImageUploadError } from '@/lib/sanity/image-upload-diagnostic';
+
+  const form = document.getElementById('uploadForm') as HTMLFormElement;
+  const input = document.getElementById('imageInput') as HTMLInputElement;
+  const uploadBtn = document.getElementById('uploadBtn') as HTMLButtonElement;
+  const diagnosticsDiv = document.getElementById('diagnosticsContainer') as HTMLDivElement;
+
+  const projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID;
+  const token = import.meta.env.SANITY_API_WRITE_TOKEN;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const file = input.files?.[0];
+    if (!file) {
+      showError('Sélectionnez une image');
+      return;
+    }
+
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<span>Vérification en cours...</span>';
+    diagnosticsDiv.innerHTML = '';
+
+    try {
+      // Lancer le diagnostic
+      const report = await diagnoseImageUploadError(file, projectId, token);
+
+      // Afficher les résultats
+      displayDiagnosticResults(report, file);
+
+      // Activer le bouton d'upload seulement si pas d'erreurs critiques
+      if (report.overallStatus === 'ready') {
+        uploadBtn.innerHTML = '<span>✅ Prêt à uploader</span>';
+        uploadBtn.disabled = false;
+      } else if (report.overallStatus === 'degraded') {
+        uploadBtn.innerHTML = '<span>⚠️ Upload possible (avec avertissements)</span>';
+        uploadBtn.disabled = false;
+      } else {
+        uploadBtn.innerHTML = '<span>❌ Upload bloqué</span>';
+        uploadBtn.disabled = true;
+      }
+    } catch (error) {
+      showError(`Erreur lors du diagnostic: ${error instanceof Error ? error.message : 'Inconnu'}`);
+      uploadBtn.innerHTML = '<span>Vérifier et Uploader</span>';
+      uploadBtn.disabled = false;
+    }
+  });
+
+  function displayDiagnosticResults(report: any, file: File) {
+    const criticalChecks = report.checks.filter((c: any) => c.severity === 'critical');
+    const warningChecks = report.checks.filter((c: any) => c.severity === 'warning');
+    const successChecks = report.checks.filter((c: any) => c.status === 'success');
+
+    // Status global
+    const statusEl = document.createElement('div');
+    statusEl.className = `diagnostic-status status-${report.overallStatus}`;
+
+    const statusIcons: Record<string, string> = {
+      ready: '✅',
+      degraded: '⚠️',
+      blocked: '❌'
+    };
+
+    const statusTexts: Record<string, string> = {
+      ready: 'Tous les pré-requis sont satisfaits',
+      degraded: 'Problèmes détectés mais upload possible',
+      blocked: 'Upload bloqué - corrigez les erreurs'
+    };
+
+    statusEl.innerHTML = `
+      <div class="status-header">
+        <span class="status-icon">${statusIcons[report.overallStatus]}</span>
+        <span class="status-text">${statusTexts[report.overallStatus]}</span>
+      </div>
+      <div class="file-info">
+        📄 ${file.name} (${(file.size / 1024).toFixed(2)}KB)
+      </div>
+    `;
+    diagnosticsDiv.appendChild(statusEl);
+
+    // Erreurs critiques
+    if (criticalChecks.length > 0) {
+      const errorsEl = document.createElement('div');
+      errorsEl.className = 'diagnostic-section errors';
+      errorsEl.innerHTML = '<h4>❌ Erreurs Critiques:</h4>';
+
+      criticalChecks.forEach((check: any) => {
+        const el = document.createElement('div');
+        el.className = 'diagnostic-item critical';
+        el.innerHTML = `
+          <div class="item-header">
+            <strong>${check.code}</strong>
+            <span class="severity-badge">${check.severity}</span>
+          </div>
+          <div class="item-message">${check.message}</div>
+          <div class="item-fix">💡 ${check.suggestedFix}</div>
+        `;
+        errorsEl.appendChild(el);
+      });
+      diagnosticsDiv.appendChild(errorsEl);
+    }
+
+    // Avertissements
+    if (warningChecks.length > 0) {
+      const warningsEl = document.createElement('div');
+      warningsEl.className = 'diagnostic-section warnings';
+      warningsEl.innerHTML = '<h4>⚠️ Avertissements:</h4>';
+
+      warningChecks.forEach((check: any) => {
+        const el = document.createElement('div');
+        el.className = 'diagnostic-item warning';
+        el.innerHTML = `
+          <div class="item-header">
+            <strong>${check.code}</strong>
+          </div>
+          <div class="item-message">${check.message}</div>
+          <div class="item-fix">💡 ${check.suggestedFix}</div>
+        `;
+        warningsEl.appendChild(el);
+      });
+      diagnosticsDiv.appendChild(warningsEl);
+    }
+
+    // Afficher les checks réussis dans un collapsible
+    if (successChecks.length > 0) {
+      const successEl = document.createElement('details');
+      successEl.className = 'diagnostic-section success';
+      const summaryEl = document.createElement('summary');
+      summaryEl.innerHTML = `✅ ${successChecks.length} vérifications réussies`;
+      successEl.appendChild(summaryEl);
+
+      successChecks.forEach((check: any) => {
+        const el = document.createElement('div');
+        el.className = 'diagnostic-item success-detail';
+        el.innerHTML = `
+          <strong>${check.code}</strong>: ${check.message}
+        `;
+        successEl.appendChild(el);
+      });
+      diagnosticsDiv.appendChild(successEl);
+    }
+  }
+
+  function showError(message: string) {
+    const errorEl = document.createElement('div');
+    errorEl.className = 'diagnostic-error';
+    errorEl.textContent = `❌ ${message}`;
+    diagnosticsDiv.innerHTML = '';
+    diagnosticsDiv.appendChild(errorEl);
+  }
+</script>
+
+<style>
+  .upload-diagnostic {
+    padding: 2rem;
+    max-width: 600px;
+    margin: 2rem auto;
+  }
+
+  .upload-form-container h3 {
+    margin-bottom: 1.5rem;
+    font-size: 1.3rem;
+    color: var(--text-primary, #1a1a1a);
+  }
+
+  .file-input-wrapper {
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+
+  #imageInput {
+    display: none;
+  }
+
+  label[for="imageInput"] {
+    display: block;
+    padding: 1rem;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--bg-light, #f9f9f9);
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+  }
+
+  label[for="imageInput"]:hover {
+    border-color: #999;
+    background: var(--bg-hover, #f0f0f0);
+  }
+
+  #imageInput:focus + label {
+    border-color: #4a5568;
+    box-shadow: 0 0 0 3px rgba(74, 85, 104, 0.1);
+  }
+
+  .btn-upload {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    background: #4a5568;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .btn-upload:hover:not(:disabled) {
+    background: #2d3748;
+  }
+
+  .btn-upload:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .diagnostics-container {
+    margin-top: 2rem;
+  }
+
+  .diagnostic-status {
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid;
+  }
+
+  .diagnostic-status.status-ready {
+    background: #f0fdf4;
+    border-left-color: #22c55e;
+    color: #166534;
+  }
+
+  .diagnostic-status.status-degraded {
+    background: #fffbeb;
+    border-left-color: #eab308;
+    color: #854d0e;
+  }
+
+  .diagnostic-status.status-blocked {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+    color: #991b1b;
+  }
+
+  .status-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .status-icon {
+    font-size: 1.2rem;
+  }
+
+  .file-info {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin-top: 0.5rem;
+  }
+
+  .diagnostic-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .diagnostic-section h4 {
+    margin: 0 0 1rem 0;
+    font-size: 0.95rem;
+    color: var(--text-primary, #1a1a1a);
+  }
+
+  .diagnostic-item {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    border-left: 4px solid;
+  }
+
+  .diagnostic-item.critical {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+  }
+
+  .diagnostic-item.warning {
+    background: #fffbeb;
+    border-left-color: #eab308;
+  }
+
+  .diagnostic-item.success-detail {
+    background: #f0fdf4;
+    border-left-color: #22c55e;
+    font-size: 0.9rem;
+  }
+
+  .item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .severity-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .item-message {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary, #444);
+  }
+
+  .item-fix {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--text-secondary, #555);
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .diagnostic-error {
+    padding: 1rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    color: #991b1b;
+  }
+
+  details {
+    cursor: pointer;
+  }
+
+  details summary {
+    padding: 0.75rem;
+    background: var(--bg-light, #f5f5f5);
+    border-radius: 6px;
+    user-select: none;
+    font-weight: 500;
+  }
+
+  details summary:hover {
+    background: var(--bg-hover, #eee);
+  }
+
+  details[open] summary {
+    margin-bottom: 0.75rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    label[for="imageInput"] {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    label[for="imageInput"]:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+</style>
