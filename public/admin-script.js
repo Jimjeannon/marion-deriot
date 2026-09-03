@@ -135,6 +135,58 @@ function initAdmin() {
     return data;
   }
 
+  // ── Compression client avant upload ──────────────────────────────
+  // Netlify plafonne le corps d'une requete de fonction a 6 Mo (encodage base64
+  // compris), soit ~4,4 Mo de fichier reel. Une photo de reflex (8-15 Mo) depasse
+  // ce seuil : la requete est rejetee AVANT d'atteindre le serveur, et l'admin
+  // affichait une "Erreur 400" sans explication. On redimensionne donc en amont.
+  var COMPRESS_THRESHOLD = 3 * 1024 * 1024;   // au-dela on recompresse
+  var HARD_LIMIT_BYTES = 4.4 * 1024 * 1024;   // plafond reel de l'hebergeur
+  var MAX_DIMENSION = 2560;                   // largement suffisant pour le site
+
+  function compressImage(file) {
+    return new Promise(function (resolve) {
+      // HEIC/AVIF ne sont pas decodables par canvas : on laisse passer tel quel.
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return resolve(file);
+      if (file.size <= COMPRESS_THRESHOLD) return resolve(file);
+
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          var scale = Math.min(1, MAX_DIMENSION / Math.max(w, h));
+          var cw = Math.round(w * scale), ch = Math.round(h * scale);
+          var canvas = document.createElement('canvas');
+          canvas.width = cw; canvas.height = ch;
+          canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
+          canvas.toBlob(function (blob) {
+            URL.revokeObjectURL(url);
+            if (!blob || blob.size >= file.size) return resolve(file);
+            var name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+            var out;
+            try { out = new File([blob], name, { type: 'image/jpeg' }); }
+            catch (e) { out = blob; out.name = name; }
+            resolve(out);
+          }, 'image/jpeg', 0.85);
+        } catch (e) { URL.revokeObjectURL(url); resolve(file); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
+  // Traduit un code HTTP en message actionnable pour l'utilisatrice.
+  function explainUploadError(status, data) {
+    if (data && data.error) return data.error + " (code " + status + ")";
+    if (status === 401) return "Session expiree \u2014 reconnectez-vous, puis reessayez. (code 401)";
+    if (status === 400) return "Fichier refuse : format non reconnu ou fichier vide. (code 400)";
+    if (status === 413 || status === 0) return "Image trop lourde pour l'hebergeur (max ~4 Mo). Reduisez-la avant import. (code " + status + ")";
+    if (status === 429) return "Trop d'envois rapproches \u2014 patientez une minute. (code 429)";
+    if (status >= 500) return "Erreur cote serveur (Sanity ou Netlify) \u2014 reessayez dans un instant. (code " + status + ")";
+    return "Erreur " + status;
+  }
+
   // ── Upload XHR ──────────────────────────────────────────────────────────
   function uploadXHR(url, formData, onProgress) {
     return new Promise(function (resolve, reject) {
@@ -152,8 +204,9 @@ function initAdmin() {
         } catch (ex) {
           data = {};
         }
-        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
-        else reject(new Error(data.error || 'Erreur ' + xhr.status));
+        if (xhr.status >= 200 && xhr.status < 300) return resolve(data);
+        console.warn('[upload] echec', xhr.status, xhr.responseText && xhr.responseText.slice(0, 300));
+        reject(new Error(explainUploadError(xhr.status, data)));
       };
       xhr.onerror = function () {
         reject(new Error('Erreur réseau'));
@@ -647,8 +700,15 @@ function initAdmin() {
       renderGallery();
 
       try {
+        var sent = await compressImage(file);
+        if (sent !== file) {
+          console.info('[upload] ' + file.name + ' compresse : ' + fmtSize(file.size) + ' -> ' + fmtSize(sent.size));
+        }
+        if (sent.size > HARD_LIMIT_BYTES) {
+          throw new Error('Image trop lourde meme apres compression (' + fmtSize(sent.size) + '). Exportez-la en plus petit puis reessayez.');
+        }
         var fd = new FormData();
-        fd.append('image', file);
+        fd.append('image', sent, sent.name || file.name);
         fd.append('isPreview', isPreview ? 'true' : 'false');
 
         var up = await uploadXHR('/api/admin/projects/' + editing._id + '/upload', fd, function (pct) {

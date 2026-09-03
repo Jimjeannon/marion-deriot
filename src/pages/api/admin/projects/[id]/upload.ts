@@ -12,7 +12,10 @@ import { getSanityWriteClient } from '@/lib/sanity-write';
 export const prerender = false;
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'];
-const MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 Mo
+// Netlify plafonne le corps d'une requete de fonction a 6 Mo base64 inclus,
+// soit ~4,4 Mo de fichier reel. Annoncer 50 Mo faisait echouer l'envoi AVANT
+// d'atteindre ce code : le navigateur recevait une erreur nue, sans message.
+const MAX_SIZE_BYTES = 4.4 * 1024 * 1024; // ~4,4 Mo (limite hebergeur)
 
 function isAuthorized(cookies: AstroCookies): boolean {
   return verifySessionToken(cookies.get(SESSION_COOKIE_NAME)?.value);
@@ -29,19 +32,36 @@ export const POST: APIRoute = async ({ cookies, request, params }) => {
   if (!isAuthorized(cookies)) return json({ error: 'Non autorisé' }, 401);
 
   const { id } = params;
-  if (!id) return json({ error: 'ID manquant' }, 400);
+  if (!id) return json({ error: 'ID de projet manquant.', code: 'NO_PROJECT_ID' }, 400);
 
   let formData: FormData;
   try {
     formData = await request.formData();
   } catch {
-    return json({ error: 'Impossible de lire le formulaire' }, 400);
+    console.warn('[upload] 400 NO_FORM_DATA : corps illisible (souvent = fichier trop lourd)');
+    return json(
+      {
+        error:
+          "Impossible de lire le fichier envoye. C'est presque toujours une image trop lourde : " +
+          'exportez-la en moins de 4 Mo puis reessayez.',
+        code: 'NO_FORM_DATA',
+      },
+      400
+    );
   }
 
   const file = formData.get('image') as File | null;
   if (!file || typeof file === 'string' || !(file.size > 0)) {
     console.warn('[upload] 400 : aucun fichier exploitable');
-    return json({ error: 'Aucun fichier fourni.' }, 400);
+    return json(
+      {
+        error:
+          "Aucun fichier exploitable. Verifiez que l'image est bien telechargee sur " +
+          "l'ordinateur (et pas seulement dans iCloud/OneDrive), puis reessayez.",
+        code: 'EMPTY_FILE',
+      },
+      400
+    );
   }
 
   const fallbackExt = (file.type && file.type.split('/')[1]) || 'jpg';
@@ -53,11 +73,20 @@ export const POST: APIRoute = async ({ cookies, request, params }) => {
   const typeOk = !file.type || ALLOWED_TYPES.includes(file.type);
   if (!extOk && !typeOk) {
     console.warn('[upload] 400 : format non supporte', fileName, file.type);
-    return json({ error: 'Format non supporte. Acceptes : JPEG, PNG, WebP, AVIF.' }, 400);
+    return json(
+      { error: `Format non supporte (${file.type || 'inconnu'}). Acceptes : JPEG, PNG, WebP, AVIF.`, code: 'BAD_FORMAT' },
+      400
+    );
   }
   if (file.size > MAX_SIZE_BYTES) {
     console.warn('[upload] 400 : trop volumineux', file.size);
-    return json({ error: 'Fichier trop volumineux (max 50 Mo).' }, 400);
+    return json(
+      {
+        error: `Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} Mo). Maximum 4 Mo.`,
+        code: 'TOO_LARGE',
+      },
+      400
+    );
   }
 
   // isPreview transmis depuis le formulaire (champ texte "true"/"false")
@@ -132,6 +161,15 @@ export const POST: APIRoute = async ({ cookies, request, params }) => {
     // eslint-disable-next-line no-console
     console.error('[upload] Sanity error:', err);
     const msg = err instanceof Error ? err.message : String(err);
-    return json({ error: msg }, 500);
+    const isAuth = /unauthorized|permission|token|401|403/i.test(msg);
+    return json(
+      {
+        error: isAuth
+          ? "Sanity a refuse l'ecriture : le jeton d'acces est invalide ou expire. Previenez l'administrateur du site."
+          : `Erreur Sanity : ${msg}`,
+        code: isAuth ? 'SANITY_AUTH' : 'SANITY_ERROR',
+      },
+      500
+    );
   }
 };
